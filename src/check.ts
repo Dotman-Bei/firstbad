@@ -74,3 +74,11 @@ export function valuesMatch(a: string, b: string): boolean {
   const tb = numberTokens(nb);
   return ta.length === 1 && tb.length === 1 && ta[0] === tb[0];
 }
+
+export function validateObjective(objective: string): string[] {
+  const problems: string[] = [];
+  if (!/^go to https?:\/\//i.test(objective.trim())) problems.push('--objective must start with "Go to http://" or "Go to https://"');
+  if (!objective.includes("'observed'")) problems.push("--objective must store the value as 'observed'");
+  if (objective.includes('{{')) problems.push('--objective must not contain {{');
+  return problems;
+}

@@ -26,6 +26,7 @@ export interface FlowOptions {
   verdictMode?: VerdictMode;
   promptRoute?: AgentPromptRoute;
   oracleCmd?: string[];
+  objective?: string | null;
 }
 
 export interface FlowResult {
@@ -43,7 +44,7 @@ export async function runFlow(o: FlowOptions): Promise<FlowResult> {
   let prepared: Prepared;
   try {
     prepared = await prepareSession(
-      { repoDir: o.repoDir, good: o.good, bad: o.bad, check: o.check, serve: o.serve, setup: o.setup, kaneCmd: o.kaneCmd, env: o.env, template: o.template, verdictMode: o.verdictMode },
+      { repoDir: o.repoDir, good: o.good, bad: o.bad, check: o.check, serve: o.serve, setup: o.setup, kaneCmd: o.kaneCmd, env: o.env, template: o.template, verdictMode: o.verdictMode, objective: o.objective },
       log,
     );
   } catch (err) {

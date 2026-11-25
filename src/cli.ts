@@ -28,6 +28,7 @@ export const HELP = [
   'Usage:',
   '  firstbad hunt --good <ref> --url <url> --do "<steps>" --store "<what>" --expect "<value>" --serve "<cmd>"',
   '                [--bad <ref>] [--setup "<cmd>"] [--agent "<cmd>" | --agent none] [--no-fix] [--out <dir>] [--repo <path>]',
+  "                [--objective \"<raw Kane objective that stores the value as 'observed'>\"]",
   '  firstbad oracle --session <file>    a git-bisect-run script (exit 0 good, 1 bad, 125 skip, 128 abort)',
   '  firstbad clean [--repo <path>]      remove leftover firstbad worktrees and session folders',
   '  firstbad demo [--dir <path>] [--port <n>] [--agent "<cmd>" | --agent none] [--no-fix] [--force]',
@@ -57,6 +58,7 @@ const HUNT_OPTIONS = {
   'no-fix': { type: 'boolean' },
   out: { type: 'string' },
   repo: { type: 'string' },
+  objective: { type: 'string' },
 } as const;
 
 function parseHunt(args: string[]) {
@@ -71,11 +73,14 @@ async function huntCommand(args: string[], io: CliIO): Promise<number> {
     io.print(`firstbad hunt: ${err instanceof Error ? err.message : String(err)}`);
     return 2;
   }
-  const { good, url, store, serve } = values;
-  const steps = values.do;
+  const { good, url, serve } = values;
+  const raw = values.objective;
+  const store = values.store ?? (raw !== undefined ? 'the observed value' : undefined);
+  const steps = values.do ?? (raw !== undefined ? '(raw objective)' : undefined);
   const expected = values.expect;
   if (good === undefined || url === undefined || steps === undefined || store === undefined || expected === undefined || serve === undefined) {
-    const missing = (['good', 'url', 'do', 'store', 'expect', 'serve'] as const).filter((k) => values[k] === undefined);
+    const given: Record<string, string | undefined> = { good, url, do: steps, store, expect: expected, serve };
+    const missing = Object.keys(given).filter((k) => given[k] === undefined);
     io.print(`firstbad hunt: missing ${missing.map((k) => `--${k}`).join(', ')}`);
     return 2;
   }
@@ -99,6 +104,7 @@ async function huntCommand(args: string[], io: CliIO): Promise<number> {
     env: io.env,
     print: (l) => io.print(l),
     color: io.color,
+    objective: raw ?? null,
   });
   return r.exitCode;
 }

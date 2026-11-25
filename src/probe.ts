@@ -79,7 +79,7 @@ export async function probe(sessionPath: string, t: ProbeTarget): Promise<ProbeR
       kaneRuns += 1;
       last = await runKane({
         kaneCmd: s.kaneCmd,
-        objective: composeObjective(s.check, s.template),
+        objective: s.objective ?? composeObjective(s.check, s.template),
         timeoutSec: s.kaneTimeoutSec,
         maxSteps: KANE_MAX_STEPS,
         cwd: s.kaneCwd,

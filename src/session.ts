@@ -42,6 +42,7 @@ export interface Session {
   maxRuns: number;
   runsUsed: number;
   badValue: string | null;
+  objective?: string | null;
 }
 
 export interface HuntLog {

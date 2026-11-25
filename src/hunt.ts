@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { validateCheck, type Check } from './check.js';
+import { validateCheck, validateObjective, type Check } from './check.js';
 import { addWorktree, checkoutDetached, git, gitOut, isAncestor, removeWorktree, revParse, subjectOf, topLevel } from './git.js';
 import { KANE_PROFILE, type TemplateId, type VerdictMode } from './kane-profile.js';
 import { kaneBalance, kaneVersion, versionAtLeast } from './kane/runner.js';
@@ -31,6 +31,7 @@ export interface PrepareOptions {
   env: NodeJS.ProcessEnv;
   template?: TemplateId;
   verdictMode?: VerdictMode;
+  objective?: string | null;
 }
 
 export interface Prepared {
@@ -59,7 +60,8 @@ export function defaultOracleCmd(): string[] {
 
 export async function prepareSession(o: PrepareOptions, log: HuntLog): Promise<Prepared> {
   const problems = validateCheck(o.check);
-  if (problems.length > 0) throw new PreflightError(problems.join('; '));
+  const objectiveProblems = o.objective === undefined || o.objective === null ? [] : validateObjective(o.objective);
+  if (problems.length + objectiveProblems.length > 0) throw new PreflightError([...problems, ...objectiveProblems].join('; '));
   let repoDir: string;
   try {
     repoDir = await topLevel(o.repoDir);
@@ -117,6 +119,7 @@ export async function prepareSession(o: PrepareOptions, log: HuntLog): Promise<P
     maxRuns: limits.maxRuns,
     runsUsed: 0,
     badValue: null,
+    objective: o.objective ?? null,
   };
   const sessionPath = path.join(sessionDir, 'session.json');
   writeSession(sessionPath, session);
