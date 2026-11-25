@@ -1,0 +1,35 @@
+# firstbad demo, recorded live 2026-11-25T22:55:09.916Z on win32 x64, node v22.23.4
+# exit code 0, wall clock 1311 s
+
+firstbad demo: generated the Corner Shop history (40 commits, good ref v1.0, HEAD 6f9b864) in <tmp>\firstbad-live-4WTRNz\demo\shop
+firstbad demo: the check: at http://127.0.0.1:4173/ add the Tote bag to the cart, add the Mug to the cart, type SAVE10 into the discount code field and click Apply, store the total amount shown next to the word Total, expect $18.00
+firstbad: hunting "the total amount shown next to the word Total" (expect $18.00) from v1.0 to HEAD, balance 10983.14 credits, cap 24 Kane runs
+  bracket  6f9b864  bad ref                             FAIL   $20.00     stored $20.00, expected $18.00
+  bracket  da74bfb  good ref                            PASS   $18.00     stored $18.00
+  Bisecting: 19 revisions left to test after this (roughly 4 steps)
+  bisect   c0eaa8b  style: align the total to the r...  SKIP   -          page never loaded (server exited with code 1)
+  Bisecting: 18 revisions left to test after this (roughly 4 steps)
+  bisect   0b42566  docs: add a contributing note       SKIP   -          page never loaded (server exited with code 1)
+  Bisecting: 18 revisions left to test after this (roughly 4 steps)
+  bisect   4bb7b51  feat(catalog): add the Tea towel    SKIP   -          page never loaded (server exited with code 1)
+  Bisecting: 18 revisions left to test after this (roughly 4 steps)
+  bisect   11b41c0  chore(server): log each request...  PASS   $18.00     stored $18.00
+  Bisecting: 13 revisions left to test after this (roughly 4 steps)
+  bisect   cc47753  feat(catalog): add the Postcard     PASS   $18.00     stored $18.00
+  Bisecting: 6 revisions left to test after this (roughly 3 steps)
+  bisect   b13a801  feat(catalog): add the Keyring      FAIL   $20.00     stored $20.00, expected $18.00
+  Bisecting: 3 revisions left to test after this (roughly 2 steps)
+  bisect   df01b19  chore(pricing): document the di...  PASS   $18.00     stored $18.00
+  Bisecting: 1 revision left to test after this (roughly 1 step)
+  bisect   1ef4620  docs(changelog): note the prici...  FAIL   $20.00     stored $20.00, expected $18.00
+  Bisecting: 0 revisions left to test after this (roughly 0 steps)
+  bisect   fc2879c  refactor(cart): extract price h...  FAIL   $20.00     stored $20.00, expected $18.00
+  first bad commit: fc2879c refactor(cart): extract price helpers; re-testing it and its parent
+  confirm  fc2879c  culprit                             FAIL   $20.00     stored $20.00, expected $18.00
+  confirm  df01b19  parent                              PASS   $18.00     stored $18.00
+firstbad: first bad commit: fc2879c refactor(cart): extract price helpers (confirmed: culprit FAIL, parent PASS)
+  fix attempt 1: handing Kane's failure to the agent (claude)
+  fix      6f9b864  fix attempt 1                       PASS   $18.00     stored $18.00
+firstbad: fix verified on branch firstbad/fix-fc2879c (commit 617eb8f): Kane passed the patched tree on attempt 1
+firstbad: 11 Kane runs, 188.77 credits reported by Kane, balance delta 200.5255
+firstbad: report <tmp>\firstbad-live-4WTRNz\demo\report\report.md
