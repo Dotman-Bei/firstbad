@@ -1,0 +1,946 @@
+{
+  "project": "firstbad",
+  "spec": "docs/superpowers/specs/2026-11-25-firstbad-design.md",
+  "subsystems": [
+    "core",
+    "demo",
+    "ship"
+  ],
+  "notes": {
+    "priority": "must-have tasks are never cut; droppable tasks (core:9) may be cut if the build is behind, and nothing depends on them; stretch tasks (ship:16) run only after the LIVE demo hunt (ship:15) is green.",
+    "live": "live: true marks the two tasks that spend Kane credits (core:2 day-1 spike, ship:15 demo hunt). Their gates are offline; the credit-spending step runs once, in the background. Dispatch core:2 first after core:1; dispatch ship:15 only after every must-have task and core:9 (unless cut) is done.",
+    "human_gate": "No task deploys, moves funds or handles a key or secret: Kane OAuth tokens stay inside kane-cli and the agent uses the local Claude Code login. The public-repo flip, the YouTube upload and the submission are Step-3 campaign gates, outside this manifest.",
+    "pending": "A replay re-verification stretch task is authored after core:2 only if docs/spike/spike-result.json shows replayFaithful and replayHasValues."
+  },
+  "tasks": [
+    {
+      "id": "core:1",
+      "subsystem": "core",
+      "title": "Scaffold the package, compiler, test runner and Kane profile",
+      "plan": "docs/superpowers/plans/2026-11-25-firstbad-core.md",
+      "depends_on": [],
+      "effort": "low",
+      "model_tier": "fast",
+      "files": {
+        "create": [
+          "package.json",
+          "package-lock.json",
+          "tsconfig.json",
+          "vitest.config.ts",
+          ".gitignore",
+          "LICENSE",
+          "src/version.ts",
+          "src/kane-profile.ts"
+        ],
+        "modify": [],
+        "test": [
+          "test/global-setup.ts",
+          "test/version.test.ts"
+        ]
+      },
+      "provides": [
+        "VERSION: string (src/version.ts)",
+        "type TemplateId = 'commas-assert' | 'sentences-assert' | 'store-only'",
+        "type VerdictMode = 'status+value' | 'value-only'",
+        "type AgentPromptRoute = 'stdin' | 'arg'",
+        "interface KaneProfile { template: TemplateId; verdictMode: VerdictMode; agentPromptRoute: AgentPromptRoute; source: string }",
+        "TEMPLATE_IDS: readonly TemplateId[]",
+        "KANE_PROFILE: KaneProfile (src/kane-profile.ts)"
+      ],
+      "requires": [],
+      "gate": {
+        "run": "npx vitest run test/version.test.ts",
+        "expect": "Tests  1 passed"
+      },
+      "commit": "chore: scaffold firstbad (TypeScript, Vitest, Kane profile)",
+      "human_gate": false,
+      "allow_empty": false,
+      "priority": "must-have",
+      "live": false,
+      "status": "pending"
+    },
+    {
+      "id": "core:2",
+      "subsystem": "core",
+      "title": "LIVE day-1 spike (objective template, verdict mode, replay, nested agent)",
+      "plan": "docs/superpowers/plans/2026-11-25-firstbad-core.md",
+      "depends_on": [
+        "core:1"
+      ],
+      "effort": "medium",
+      "model_tier": "top",
+      "files": {
+        "create": [
+          "scripts/spike/run-spike.mjs",
+          "scripts/spike/check-spike.mjs",
+          "docs/spike/spike-result.json",
+          "docs/spike/kane-spike.md"
+        ],
+        "modify": [
+          "src/kane-profile.ts"
+        ],
+        "test": []
+      },
+      "provides": [
+        "docs/spike/spike-result.json decisions { chosenTemplate, verdictMode, agentPromptRoute, localRunEndWellFormed, replayFaithful, replayHasValues }",
+        "src/kane-profile.ts rewritten with the spike's choices"
+      ],
+      "requires": [
+        "KANE_PROFILE: KaneProfile (src/kane-profile.ts)"
+      ],
+      "gate": {
+        "run": "node scripts/spike/check-spike.mjs",
+        "expect": "PASS"
+      },
+      "commit": "feat(spike): LIVE day-1 Kane spike picks the objective template and verdict mode",
+      "human_gate": false,
+      "allow_empty": false,
+      "priority": "must-have",
+      "live": true,
+      "status": "pending"
+    },
+    {
+      "id": "core:3",
+      "subsystem": "core",
+      "title": "Kane I/O — scrubber, process helpers, NDJSON parser, runner and the stub kane-cli",
+      "plan": "docs/superpowers/plans/2026-11-25-firstbad-core.md",
+      "depends_on": [
+        "core:1"
+      ],
+      "effort": "high",
+      "files": {
+        "create": [
+          "src/scrub.ts",
+          "src/util/proc.ts",
+          "src/kane/ndjson.ts",
+          "src/kane/runner.ts",
+          "test/fixtures/stub-kane.mjs"
+        ],
+        "modify": [],
+        "test": [
+          "test/scrub.test.ts",
+          "test/ndjson.test.ts",
+          "test/runner.test.ts"
+        ]
+      },
+      "provides": [
+        "scrub(text: string): string",
+        "scrubDeep<T>(value: T): T",
+        "findSecrets(text: string): string[]",
+        "splitCommand(command: string): string[]",
+        "killTree(pid: number | undefined): void",
+        "interface ExecOptions { cwd: string; env?: NodeJS.ProcessEnv; timeoutMs: number; input?: string }",
+        "interface ExecResult { code: number | null; stdout: string; stderr: string; timedOut: boolean; spawnError: string | null; durationMs: number }",
+        "execArgv(argv: string[], opts: ExecOptions): Promise<ExecResult>",
+        "execShell(command: string, opts: ExecOptions): Promise<ExecResult>",
+        "spawnShell(command: string, opts: { cwd: string; env?: NodeJS.ProcessEnv }): ChildProcess",
+        "interface KaneRunEnd { status: string; summary: string; oneLiner: string; reason: string; creditsConsumed: number | null; observed: string; testUrl: string | null; resultCode: string | null; durationSec: number | null; blamesTest: boolean }",
+        "interface KaneTestMdDone { overallStatus: string; durationSec: number | null }",
+        "interface KaneStream { lines: number; firstLineIsJson: boolean; streamStart: boolean; cliVersion: string | null; runEnd: KaneRunEnd | null; testMdDone: KaneTestMdDone | null; errors: string[]; stepsDone: number; stepsFailed: number }",
+        "parseKaneStream(stdout: string): KaneStream",
+        "interface RunKaneOptions { kaneCmd: string[]; objective: string; timeoutSec: number; maxSteps: number; cwd: string; name?: string; label?: string; env?: NodeJS.ProcessEnv; killAfterMs?: number }",
+        "interface KaneRunResult { exitCode: number | null; killed: boolean; terminalMode: boolean; spawnError: string | null; stream: KaneStream; stderrTail: string; durationMs: number }",
+        "runKane(o: RunKaneOptions): Promise<KaneRunResult>",
+        "kaneBalance(kaneCmd: string[], env?: NodeJS.ProcessEnv): Promise<number | null>",
+        "kaneVersion(kaneCmd: string[], env?: NodeJS.ProcessEnv): Promise<string | null>",
+        "versionAtLeast(version: string, min: string): boolean",
+        "parseBalance(text: string): number | null",
+        "test/fixtures/stub-kane.mjs (STUB_KANE_PLAN rules matched on FIRSTBAD_LABEL; scenarios pass, fail, misphrased, error, auth, timeout, hang, upload-failed, crash, prose, false-pass, token-leak, fetch; logs to STUB_KANE_LOG)"
+      ],
+      "requires": [],
+      "gate": {
+        "run": "npx vitest run test/scrub.test.ts test/ndjson.test.ts test/runner.test.ts",
+        "expect": "Test Files  3 passed"
+      },
+      "commit": "feat(kane): scrubber, process helpers, NDJSON parser, Kane runner and stub kane-cli",
+      "human_gate": false,
+      "allow_empty": false,
+      "priority": "must-have",
+      "live": false,
+      "status": "pending"
+    },
+    {
+      "id": "core:4",
+      "subsystem": "core",
+      "title": "The check, the objective templates and the verdict rule",
+      "plan": "docs/superpowers/plans/2026-11-25-firstbad-core.md",
+      "depends_on": [
+        "core:1",
+        "core:3"
+      ],
+      "effort": "high",
+      "files": {
+        "create": [
+          "src/check.ts",
+          "src/verdict.ts"
+        ],
+        "modify": [],
+        "test": [
+          "test/check.test.ts",
+          "test/verdict.test.ts"
+        ]
+      },
+      "provides": [
+        "interface Check { url: string; do: string; store: string; expected: string }",
+        "validateCheck(c: Check): string[]",
+        "composeObjective(c: Check, template: TemplateId): string",
+        "normalizeValue(v: string): string",
+        "valuesMatch(a: string, b: string): boolean",
+        "type VerdictKind = 'PASS' | 'FAIL' | 'SKIP' | 'ABORT'",
+        "type Phase = 'bracket' | 'bisect' | 'confirm' | 'fix'",
+        "interface StepOutcome { ok: boolean; detail: string }",
+        "interface ClassifyInput { setup?: StepOutcome; ready?: StepOutcome; kane?: KaneRunResult; expected: string; badValue: string | null; mode: VerdictMode }",
+        "interface Classification { verdict: VerdictKind; reason: string; observed: string | null; misphrased: boolean; emptyValue: boolean; retryable: boolean }",
+        "classify(i: ClassifyInput): Classification",
+        "isAuthFailure(r: KaneRunResult): boolean",
+        "isTransient(r: KaneRunResult): boolean",
+        "exitCodeFor(v: VerdictKind): 0 | 1 | 125 | 128"
+      ],
+      "requires": [
+        "type TemplateId = 'commas-assert' | 'sentences-assert' | 'store-only'",
+        "type VerdictMode = 'status+value' | 'value-only'",
+        "interface KaneRunEnd { status: string; summary: string; oneLiner: string; reason: string; creditsConsumed: number | null; observed: string; testUrl: string | null; resultCode: string | null; durationSec: number | null; blamesTest: boolean }",
+        "interface KaneStream { lines: number; firstLineIsJson: boolean; streamStart: boolean; cliVersion: string | null; runEnd: KaneRunEnd | null; testMdDone: KaneTestMdDone | null; errors: string[]; stepsDone: number; stepsFailed: number }",
+        "interface KaneRunResult { exitCode: number | null; killed: boolean; terminalMode: boolean; spawnError: string | null; stream: KaneStream; stderrTail: string; durationMs: number }"
+      ],
+      "gate": {
+        "run": "npx vitest run test/check.test.ts test/verdict.test.ts",
+        "expect": "Test Files  2 passed"
+      },
+      "commit": "feat(verdict): store-first objective templates, value matching and the verdict rule",
+      "human_gate": false,
+      "allow_empty": false,
+      "priority": "must-have",
+      "live": false,
+      "status": "pending"
+    },
+    {
+      "id": "core:5",
+      "subsystem": "core",
+      "title": "Probe stack — serve the app, session file and ledger, git helpers, one-commit probe",
+      "plan": "docs/superpowers/plans/2026-11-25-firstbad-core.md",
+      "depends_on": [
+        "core:1",
+        "core:3",
+        "core:4"
+      ],
+      "effort": "high",
+      "files": {
+        "create": [
+          "src/app/serve.ts",
+          "src/session.ts",
+          "src/git.ts",
+          "src/probe.ts",
+          "test/helpers.ts",
+          "test/fixtures/tiny-server.mjs"
+        ],
+        "modify": [],
+        "test": [
+          "test/serve.test.ts",
+          "test/git.test.ts",
+          "test/probe.test.ts"
+        ]
+      },
+      "provides": [
+        "sleep(ms: number): Promise<void>",
+        "urlResponds(url: string, timeoutMs?: number): Promise<boolean>",
+        "interface ServerHandle { child: ChildProcess; exited(): number | null | undefined; output(): string; stop(): Promise<void> }",
+        "startServer(command: string, cwd: string, env?: NodeJS.ProcessEnv): ServerHandle",
+        "waitReady(url: string, server: ServerHandle, timeoutMs: number): Promise<StepOutcome>",
+        "waitDown(url: string, timeoutMs: number): Promise<boolean>",
+        "runSetup(command: string, cwd: string, timeoutMs: number, env?: NodeJS.ProcessEnv): Promise<StepOutcome>",
+        "interface LedgerEntry { phase: Phase; label: string; commit: string; subject: string; verdict: VerdictKind; reason: string; observed: string | null; kaneRuns: number; creditsConsumed: number | null; testUrl: string | null; resultCode: string | null; durationMs: number; at: string }",
+        "interface Session { version: 1; repoDir: string; sessionDir: string; worktreeDir: string; kaneCwd: string; ledgerPath: string; check: Check; template: TemplateId; verdictMode: VerdictMode; serve: string; setup: string | null; kaneCmd: string[]; kaneTimeoutSec: number; readyTimeoutSec: number; setupTimeoutSec: number; maxRuns: number; runsUsed: number; badValue: string | null }",
+        "interface HuntLog { entry(e: LedgerEntry): void; info(line: string): void }",
+        "interface Limits { minBalance: number; maxRuns: number; maxFixAttempts: number; kaneTimeoutSec: number; agentTimeoutSec: number; readyTimeoutSec: number; setupTimeoutSec: number; keepSession: boolean }",
+        "readLimits(env: NodeJS.ProcessEnv): Limits",
+        "writeSession(file: string, s: Session): void",
+        "readSession(file: string): Session",
+        "appendLedger(file: string, e: LedgerEntry): void",
+        "readLedger(file: string): LedgerEntry[]",
+        "stamp(d?: Date): string",
+        "class GitError extends Error",
+        "git(cwd: string, args: string[], timeoutMs?: number): Promise<ExecResult>",
+        "gitOut(cwd: string, args: string[], timeoutMs?: number): Promise<string>",
+        "revParse(cwd: string, ref: string): Promise<string>",
+        "subjectOf(cwd: string, ref: string): Promise<string>",
+        "isAncestor(cwd: string, a: string, b: string): Promise<boolean>",
+        "topLevel(cwd: string): Promise<string>",
+        "commonDir(cwd: string): Promise<string>",
+        "addWorktree(repoDir: string, dir: string, ref: string): Promise<void>",
+        "removeWorktree(repoDir: string, dir: string): Promise<void>",
+        "checkoutDetached(cwd: string, ref: string): Promise<void>",
+        "statusPorcelain(cwd: string): Promise<string>",
+        "branchExists(cwd: string, name: string): Promise<boolean>",
+        "KANE_MAX_STEPS = 25",
+        "interface ProbeTarget { phase: Phase; label: string; cwd: string; commit: string; subject: string }",
+        "interface ProbeResult { entry: LedgerEntry; misphrased: boolean; emptyValue: boolean }",
+        "probe(sessionPath: string, t: ProbeTarget): Promise<ProbeResult>",
+        "test/helpers.ts (ROOT, STUB_KANE, STUB_AGENT, TINY_SERVER, KANE_CMD, VALUE_SERVER, CRASH_SERVER, tempDir, git, makeRepo, bisectRepo, setStubPlan, clearStubEnv, stubRuns)",
+        "test/fixtures/tiny-server.mjs (node tiny-server.mjs <port> [--crash])"
+      ],
+      "requires": [
+        "interface ExecResult { code: number | null; stdout: string; stderr: string; timedOut: boolean; spawnError: string | null; durationMs: number }",
+        "execArgv(argv: string[], opts: ExecOptions): Promise<ExecResult>",
+        "execShell(command: string, opts: ExecOptions): Promise<ExecResult>",
+        "spawnShell(command: string, opts: { cwd: string; env?: NodeJS.ProcessEnv }): ChildProcess",
+        "killTree(pid: number | undefined): void",
+        "runKane(o: RunKaneOptions): Promise<KaneRunResult>",
+        "interface Check { url: string; do: string; store: string; expected: string }",
+        "composeObjective(c: Check, template: TemplateId): string",
+        "classify(i: ClassifyInput): Classification",
+        "interface Classification { verdict: VerdictKind; reason: string; observed: string | null; misphrased: boolean; emptyValue: boolean; retryable: boolean }",
+        "interface StepOutcome { ok: boolean; detail: string }",
+        "type VerdictKind = 'PASS' | 'FAIL' | 'SKIP' | 'ABORT'",
+        "type Phase = 'bracket' | 'bisect' | 'confirm' | 'fix'",
+        "type TemplateId = 'commas-assert' | 'sentences-assert' | 'store-only'",
+        "type VerdictMode = 'status+value' | 'value-only'",
+        "test/fixtures/stub-kane.mjs (STUB_KANE_PLAN rules matched on FIRSTBAD_LABEL; scenarios pass, fail, misphrased, error, auth, timeout, hang, upload-failed, crash, prose, false-pass, token-leak, fetch; logs to STUB_KANE_LOG)"
+      ],
+      "gate": {
+        "run": "npx vitest run test/serve.test.ts test/git.test.ts test/probe.test.ts",
+        "expect": "Test Files  3 passed"
+      },
+      "commit": "feat(probe): serve each commit, session ledger, git helpers and the one-commit probe",
+      "human_gate": false,
+      "allow_empty": false,
+      "priority": "must-have",
+      "live": false,
+      "status": "pending"
+    },
+    {
+      "id": "core:6",
+      "subsystem": "core",
+      "title": "The `git bisect run` oracle and the hunt (preflight, worktree, bracket, bisect, confirm, cleanup)",
+      "plan": "docs/superpowers/plans/2026-11-25-firstbad-core.md",
+      "depends_on": [
+        "core:1",
+        "core:3",
+        "core:4",
+        "core:5"
+      ],
+      "effort": "high",
+      "files": {
+        "create": [
+          "src/oracle.ts",
+          "src/oracle-bin.ts",
+          "src/hunt.ts"
+        ],
+        "modify": [],
+        "test": [
+          "test/hunt.test.ts"
+        ]
+      },
+      "provides": [
+        "ORACLE_MARK = '@@firstbad '",
+        "runOracle(sessionPath: string, cwd: string, write?: (line: string) => void): Promise<number>",
+        "dist/oracle-bin.js (git bisect run script: --session <file>; exit 0 good, 1 bad, 125 skip, 128 abort)",
+        "MIN_KANE_VERSION = '0.10.9'",
+        "class PreflightError extends Error",
+        "interface PrepareOptions { repoDir: string; good: string; bad: string; check: Check; serve: string; setup: string | null; kaneCmd: string[]; env: NodeJS.ProcessEnv; template?: TemplateId; verdictMode?: VerdictMode }",
+        "interface Prepared { sessionPath: string; session: Session; balanceBefore: number | null; goodSha: string; badSha: string }",
+        "type HuntStatus = 'confirmed' | 'unconfirmed' | 'nothing-to-hunt' | 'aborted'",
+        "interface HuntResult { status: HuntStatus; message: string; culprit: { commit: string; subject: string } | null; parent: string | null; badValue: string | null; entries: LedgerEntry[] }",
+        "defaultOracleCmd(): string[]",
+        "prepareSession(o: PrepareOptions, log: HuntLog): Promise<Prepared>",
+        "parseBisectOutput(output: string): { firstBad: string | null; candidates: string[] }",
+        "hunt(p: Prepared, log: HuntLog, oracleCmd?: string[]): Promise<HuntResult>",
+        "cleanupSession(sessionPath: string, keep?: boolean): Promise<void>"
+      ],
+      "requires": [
+        "KANE_PROFILE: KaneProfile (src/kane-profile.ts)",
+        "type TemplateId = 'commas-assert' | 'sentences-assert' | 'store-only'",
+        "type VerdictMode = 'status+value' | 'value-only'",
+        "kaneBalance(kaneCmd: string[], env?: NodeJS.ProcessEnv): Promise<number | null>",
+        "kaneVersion(kaneCmd: string[], env?: NodeJS.ProcessEnv): Promise<string | null>",
+        "versionAtLeast(version: string, min: string): boolean",
+        "interface Check { url: string; do: string; store: string; expected: string }",
+        "validateCheck(c: Check): string[]",
+        "exitCodeFor(v: VerdictKind): 0 | 1 | 125 | 128",
+        "interface LedgerEntry { phase: Phase; label: string; commit: string; subject: string; verdict: VerdictKind; reason: string; observed: string | null; kaneRuns: number; creditsConsumed: number | null; testUrl: string | null; resultCode: string | null; durationMs: number; at: string }",
+        "interface Session { version: 1; repoDir: string; sessionDir: string; worktreeDir: string; kaneCwd: string; ledgerPath: string; check: Check; template: TemplateId; verdictMode: VerdictMode; serve: string; setup: string | null; kaneCmd: string[]; kaneTimeoutSec: number; readyTimeoutSec: number; setupTimeoutSec: number; maxRuns: number; runsUsed: number; badValue: string | null }",
+        "interface HuntLog { entry(e: LedgerEntry): void; info(line: string): void }",
+        "readLimits(env: NodeJS.ProcessEnv): Limits",
+        "writeSession(file: string, s: Session): void",
+        "readSession(file: string): Session",
+        "appendLedger(file: string, e: LedgerEntry): void",
+        "readLedger(file: string): LedgerEntry[]",
+        "stamp(d?: Date): string",
+        "git(cwd: string, args: string[], timeoutMs?: number): Promise<ExecResult>",
+        "gitOut(cwd: string, args: string[], timeoutMs?: number): Promise<string>",
+        "revParse(cwd: string, ref: string): Promise<string>",
+        "subjectOf(cwd: string, ref: string): Promise<string>",
+        "isAncestor(cwd: string, a: string, b: string): Promise<boolean>",
+        "topLevel(cwd: string): Promise<string>",
+        "addWorktree(repoDir: string, dir: string, ref: string): Promise<void>",
+        "removeWorktree(repoDir: string, dir: string): Promise<void>",
+        "checkoutDetached(cwd: string, ref: string): Promise<void>",
+        "probe(sessionPath: string, t: ProbeTarget): Promise<ProbeResult>",
+        "interface ProbeResult { entry: LedgerEntry; misphrased: boolean; emptyValue: boolean }",
+        "test/helpers.ts (ROOT, STUB_KANE, STUB_AGENT, TINY_SERVER, KANE_CMD, VALUE_SERVER, CRASH_SERVER, tempDir, git, makeRepo, bisectRepo, setStubPlan, clearStubEnv, stubRuns)"
+      ],
+      "gate": {
+        "run": "npx vitest run test/hunt.test.ts",
+        "expect": "Test Files  1 passed"
+      },
+      "commit": "feat(hunt): git bisect run oracle, bracket, bisect and confirm in a disposable worktree",
+      "human_gate": false,
+      "allow_empty": false,
+      "priority": "must-have",
+      "live": false,
+      "status": "pending"
+    },
+    {
+      "id": "core:7",
+      "subsystem": "core",
+      "title": "The agent fix loop (agent adapter, prompt, Kane re-verification, revert fallback, fix commit)",
+      "plan": "docs/superpowers/plans/2026-11-25-firstbad-core.md",
+      "depends_on": [
+        "core:1",
+        "core:3",
+        "core:4",
+        "core:5",
+        "core:6"
+      ],
+      "effort": "high",
+      "files": {
+        "create": [
+          "src/agent.ts",
+          "src/fix.ts",
+          "test/fixtures/stub-agent.mjs"
+        ],
+        "modify": [],
+        "test": [
+          "test/agent.test.ts",
+          "test/fix.test.ts"
+        ]
+      },
+      "provides": [
+        "DEFAULT_AGENT = 'claude -p --permission-mode acceptEdits --allowedTools Read,Edit,Write,Glob,Grep'",
+        "parseAgent(value: string | undefined): string[] | null",
+        "agentEnv(base: NodeJS.ProcessEnv, promptFile: string): NodeJS.ProcessEnv",
+        "interface AgentRun { ok: boolean; notFound: boolean; exitCode: number | null; timedOut: boolean; outputTail: string; durationMs: number }",
+        "interface AgentRunOptions { cwd: string; promptFile: string; timeoutMs: number; route: AgentPromptRoute; env?: NodeJS.ProcessEnv }",
+        "runAgent(argv: string[], prompt: string, o: AgentRunOptions): Promise<AgentRun>",
+        "interface FixPromptContext { check: Check; badValue: string; culprit: { commit: string; subject: string }; parentValue: string | null; kaneSummary: string; culpritDiff: string; attempt: number; previousFailures: string[] }",
+        "buildFixPrompt(c: FixPromptContext): string",
+        "type FixStatus = 'verified' | 'unverified' | 'skipped'",
+        "interface FixResult { status: FixStatus; route: 'agent' | 'revert' | null; branch: string | null; attempts: number; message: string; entries: LedgerEntry[] }",
+        "interface FixOptions { agentArgv: string[] | null; env: NodeJS.ProcessEnv; route?: AgentPromptRoute }",
+        "fixCommitMessage(store: string, culpritSha: string): string",
+        "fix(sessionPath: string, h: HuntResult, badSha: string, o: FixOptions, log: HuntLog): Promise<FixResult>",
+        "commitFix(sessionPath: string, message: string): Promise<string>",
+        "test/fixtures/stub-agent.mjs (modes write, noop, fail, restore-from-parent via STUB_AGENT_MODE, STUB_AGENT_FILE, STUB_AGENT_CONTENT; STUB_AGENT_NOOP_FIRST with STUB_AGENT_STATE; logs to STUB_AGENT_LOG)"
+      ],
+      "requires": [
+        "KANE_PROFILE: KaneProfile (src/kane-profile.ts)",
+        "type AgentPromptRoute = 'stdin' | 'arg'",
+        "scrub(text: string): string",
+        "splitCommand(command: string): string[]",
+        "execArgv(argv: string[], opts: ExecOptions): Promise<ExecResult>",
+        "interface Check { url: string; do: string; store: string; expected: string }",
+        "interface LedgerEntry { phase: Phase; label: string; commit: string; subject: string; verdict: VerdictKind; reason: string; observed: string | null; kaneRuns: number; creditsConsumed: number | null; testUrl: string | null; resultCode: string | null; durationMs: number; at: string }",
+        "interface HuntLog { entry(e: LedgerEntry): void; info(line: string): void }",
+        "readLimits(env: NodeJS.ProcessEnv): Limits",
+        "readSession(file: string): Session",
+        "git(cwd: string, args: string[], timeoutMs?: number): Promise<ExecResult>",
+        "gitOut(cwd: string, args: string[], timeoutMs?: number): Promise<string>",
+        "subjectOf(cwd: string, ref: string): Promise<string>",
+        "statusPorcelain(cwd: string): Promise<string>",
+        "branchExists(cwd: string, name: string): Promise<boolean>",
+        "probe(sessionPath: string, t: ProbeTarget): Promise<ProbeResult>",
+        "interface HuntResult { status: HuntStatus; message: string; culprit: { commit: string; subject: string } | null; parent: string | null; badValue: string | null; entries: LedgerEntry[] }",
+        "prepareSession(o: PrepareOptions, log: HuntLog): Promise<Prepared>",
+        "hunt(p: Prepared, log: HuntLog, oracleCmd?: string[]): Promise<HuntResult>",
+        "cleanupSession(sessionPath: string, keep?: boolean): Promise<void>",
+        "interface Prepared { sessionPath: string; session: Session; balanceBefore: number | null; goodSha: string; badSha: string }",
+        "test/helpers.ts (ROOT, STUB_KANE, STUB_AGENT, TINY_SERVER, KANE_CMD, VALUE_SERVER, CRASH_SERVER, tempDir, git, makeRepo, bisectRepo, setStubPlan, clearStubEnv, stubRuns)"
+      ],
+      "gate": {
+        "run": "npx vitest run test/agent.test.ts test/fix.test.ts",
+        "expect": "Test Files  2 passed"
+      },
+      "commit": "feat(fix): agent fix loop re-verified by Kane, revert fallback and the fix commit",
+      "human_gate": false,
+      "allow_empty": false,
+      "priority": "must-have",
+      "live": false,
+      "status": "pending"
+    },
+    {
+      "id": "core:8",
+      "subsystem": "core",
+      "title": "The report, the end-to-end flow and the `hunt` / `oracle` CLI",
+      "plan": "docs/superpowers/plans/2026-11-25-firstbad-core.md",
+      "depends_on": [
+        "core:1",
+        "core:3",
+        "core:4",
+        "core:5",
+        "core:6",
+        "core:7"
+      ],
+      "effort": "medium",
+      "files": {
+        "create": [
+          "src/report.ts",
+          "src/run.ts",
+          "src/cli.ts"
+        ],
+        "modify": [],
+        "test": [
+          "test/report.test.ts",
+          "test/cli.test.ts"
+        ]
+      },
+      "provides": [
+        "interface Report { tool: 'firstbad'; version: string; generatedAt: string; check: Check; refs: { good: string; bad: string }; hunt: { status: HuntStatus; message: string; culprit: { commit: string; subject: string } | null; parent: string | null; badValue: string | null }; fix: { status: FixStatus; route: 'agent' | 'revert' | null; branch: string | null; commit: string | null; attempts: number; message: string } | null; timeline: LedgerEntry[]; cost: { kaneRuns: number; creditsConsumed: number; balanceBefore: number | null; balanceAfter: number | null; balanceDelta: number | null } }",
+        "interface ReportInput { check: Check; refs: { good: string; bad: string }; hunt: HuntResult; fix: FixResult | null; fixCommit: string | null; timeline: LedgerEntry[]; runsUsed: number; balanceBefore: number | null; balanceAfter: number | null; now?: Date }",
+        "buildReport(i: ReportInput): Report",
+        "renderMarkdown(r: Report): string",
+        "writeReport(dir: string, r: Report, base: string): { md: string; json: string }",
+        "formatTimelineLine(e: LedgerEntry, color: boolean): string",
+        "interface FlowOptions { repoDir: string; good: string; bad: string; check: Check; serve: string; setup: string | null; agentArgv: string[] | null; noFix: boolean; outDir: string | null; kaneCmd: string[]; env: NodeJS.ProcessEnv; print: (line: string) => void; color: boolean; template?: TemplateId; verdictMode?: VerdictMode; promptRoute?: AgentPromptRoute; oracleCmd?: string[] }",
+        "interface FlowResult { exitCode: 0 | 1 | 3; report: Report | null; reportPaths: { md: string; json: string } | null; message: string }",
+        "runFlow(o: FlowOptions): Promise<FlowResult>",
+        "interface CliIO { print(line: string): void; env: NodeJS.ProcessEnv; cwd: string; color: boolean }",
+        "type Command = (args: string[], io: CliIO) => Promise<number>",
+        "HELP: string",
+        "kaneCommand(env: NodeJS.ProcessEnv): string[]",
+        "COMMANDS: Record<string, Command>",
+        "main(argv: string[], io: CliIO): Promise<number>",
+        "dist/cli.js (bin firstbad: hunt, oracle, --version, --help)"
+      ],
+      "requires": [
+        "VERSION: string (src/version.ts)",
+        "type TemplateId = 'commas-assert' | 'sentences-assert' | 'store-only'",
+        "type VerdictMode = 'status+value' | 'value-only'",
+        "type AgentPromptRoute = 'stdin' | 'arg'",
+        "scrubDeep<T>(value: T): T",
+        "findSecrets(text: string): string[]",
+        "splitCommand(command: string): string[]",
+        "kaneBalance(kaneCmd: string[], env?: NodeJS.ProcessEnv): Promise<number | null>",
+        "interface Check { url: string; do: string; store: string; expected: string }",
+        "validateCheck(c: Check): string[]",
+        "type VerdictKind = 'PASS' | 'FAIL' | 'SKIP' | 'ABORT'",
+        "interface LedgerEntry { phase: Phase; label: string; commit: string; subject: string; verdict: VerdictKind; reason: string; observed: string | null; kaneRuns: number; creditsConsumed: number | null; testUrl: string | null; resultCode: string | null; durationMs: number; at: string }",
+        "interface HuntLog { entry(e: LedgerEntry): void; info(line: string): void }",
+        "readLimits(env: NodeJS.ProcessEnv): Limits",
+        "readSession(file: string): Session",
+        "readLedger(file: string): LedgerEntry[]",
+        "stamp(d?: Date): string",
+        "commonDir(cwd: string): Promise<string>",
+        "runOracle(sessionPath: string, cwd: string, write?: (line: string) => void): Promise<number>",
+        "class PreflightError extends Error",
+        "type HuntStatus = 'confirmed' | 'unconfirmed' | 'nothing-to-hunt' | 'aborted'",
+        "interface HuntResult { status: HuntStatus; message: string; culprit: { commit: string; subject: string } | null; parent: string | null; badValue: string | null; entries: LedgerEntry[] }",
+        "interface Prepared { sessionPath: string; session: Session; balanceBefore: number | null; goodSha: string; badSha: string }",
+        "prepareSession(o: PrepareOptions, log: HuntLog): Promise<Prepared>",
+        "hunt(p: Prepared, log: HuntLog, oracleCmd?: string[]): Promise<HuntResult>",
+        "cleanupSession(sessionPath: string, keep?: boolean): Promise<void>",
+        "parseAgent(value: string | undefined): string[] | null",
+        "type FixStatus = 'verified' | 'unverified' | 'skipped'",
+        "interface FixResult { status: FixStatus; route: 'agent' | 'revert' | null; branch: string | null; attempts: number; message: string; entries: LedgerEntry[] }",
+        "fix(sessionPath: string, h: HuntResult, badSha: string, o: FixOptions, log: HuntLog): Promise<FixResult>",
+        "fixCommitMessage(store: string, culpritSha: string): string",
+        "commitFix(sessionPath: string, message: string): Promise<string>",
+        "test/helpers.ts (ROOT, STUB_KANE, STUB_AGENT, TINY_SERVER, KANE_CMD, VALUE_SERVER, CRASH_SERVER, tempDir, git, makeRepo, bisectRepo, setStubPlan, clearStubEnv, stubRuns)"
+      ],
+      "gate": {
+        "run": "npx vitest run test/report.test.ts test/cli.test.ts",
+        "expect": "Test Files  2 passed"
+      },
+      "commit": "feat(cli): report, end-to-end hunt flow and the hunt/oracle commands",
+      "human_gate": false,
+      "allow_empty": false,
+      "priority": "must-have",
+      "live": false,
+      "status": "pending"
+    },
+    {
+      "id": "core:9",
+      "subsystem": "core",
+      "title": "`firstbad clean` and Ctrl+C cleanup (droppable)",
+      "plan": "docs/superpowers/plans/2026-11-25-firstbad-core.md",
+      "depends_on": [
+        "core:5",
+        "core:6",
+        "core:8"
+      ],
+      "effort": "low",
+      "files": {
+        "create": [
+          "src/clean.ts"
+        ],
+        "modify": [
+          "src/run.ts",
+          "src/cli.ts"
+        ],
+        "test": [
+          "test/clean.test.ts"
+        ]
+      },
+      "provides": [
+        "interface CleanResult { removedWorktrees: string[]; removedSessions: string[] }",
+        "cleanLeftovers(repoDir: string, tmpRoot?: string): Promise<CleanResult>",
+        "firstbad clean [--repo <path>]",
+        "SIGINT handler in runFlow (cleans the session, exits 130)"
+      ],
+      "requires": [
+        "git(cwd: string, args: string[], timeoutMs?: number): Promise<ExecResult>",
+        "topLevel(cwd: string): Promise<string>",
+        "runFlow(o: FlowOptions): Promise<FlowResult>",
+        "interface CliIO { print(line: string): void; env: NodeJS.ProcessEnv; cwd: string; color: boolean }",
+        "COMMANDS: Record<string, Command>",
+        "main(argv: string[], io: CliIO): Promise<number>",
+        "cleanupSession(sessionPath: string, keep?: boolean): Promise<void>",
+        "test/helpers.ts (ROOT, STUB_KANE, STUB_AGENT, TINY_SERVER, KANE_CMD, VALUE_SERVER, CRASH_SERVER, tempDir, git, makeRepo, bisectRepo, setStubPlan, clearStubEnv, stubRuns)"
+      ],
+      "gate": {
+        "run": "npx vitest run test/clean.test.ts test/cli.test.ts",
+        "expect": "Test Files  2 passed"
+      },
+      "commit": "feat(cli): firstbad clean and Ctrl+C cleanup",
+      "human_gate": false,
+      "allow_empty": false,
+      "priority": "droppable",
+      "live": false,
+      "status": "pending"
+    },
+    {
+      "id": "demo:10",
+      "subsystem": "demo",
+      "title": "The Corner Shop files",
+      "plan": "docs/superpowers/plans/2026-11-25-firstbad-demo.md",
+      "depends_on": [
+        "core:1"
+      ],
+      "effort": "medium",
+      "files": {
+        "create": [
+          "src/demo/shop-files.ts"
+        ],
+        "modify": [],
+        "test": [
+          "test/demo-shop.test.ts"
+        ]
+      },
+      "provides": [
+        "baseShopFiles(): Record<string, string>",
+        "SHOP_FILE_ORDER: readonly string[]"
+      ],
+      "requires": [],
+      "gate": {
+        "run": "npx vitest run test/demo-shop.test.ts",
+        "expect": "Tests  3 passed"
+      },
+      "commit": "feat(demo): Corner Shop files (zero-dependency shop with a SAVE10 discount)",
+      "human_gate": false,
+      "allow_empty": false,
+      "priority": "must-have",
+      "live": false,
+      "status": "pending"
+    },
+    {
+      "id": "demo:11",
+      "subsystem": "demo",
+      "title": "The 40-commit demo history and its deterministic generator",
+      "plan": "docs/superpowers/plans/2026-11-25-firstbad-demo.md",
+      "depends_on": [
+        "core:1",
+        "demo:10"
+      ],
+      "effort": "high",
+      "files": {
+        "create": [
+          "src/demo/history.ts",
+          "src/demo/generate.ts"
+        ],
+        "modify": [],
+        "test": [
+          "test/demo-history.test.ts"
+        ]
+      },
+      "provides": [
+        "type Edit = { path: string; content: string } | { path: string; find: string; replace: string } | { path: string; append: string }",
+        "interface DemoCommit { subject: string; edits: Edit[] }",
+        "DEMO_GOOD_TAG = 'v1.0'",
+        "CULPRIT_INDEX = 29",
+        "CULPRIT_SUBJECT = 'refactor(cart): extract price helpers'",
+        "BROKEN_FIRST_INDEX = 18",
+        "BROKEN_LAST_INDEX = 21",
+        "demoHistory(): DemoCommit[]",
+        "DEMO_AUTHOR = { name: 'Corner Shop Dev', email: 'dev@corner-shop.invalid' }",
+        "interface GeneratedDemo { dir: string; head: string; goodRef: string; commits: number }",
+        "generateDemoRepo(dir: string): GeneratedDemo"
+      ],
+      "requires": [
+        "baseShopFiles(): Record<string, string>"
+      ],
+      "gate": {
+        "run": "npx vitest run test/demo-history.test.ts",
+        "expect": "Tests  4 passed"
+      },
+      "commit": "feat(demo): deterministic 40-commit Corner Shop history with a planted regression",
+      "human_gate": false,
+      "allow_empty": false,
+      "priority": "must-have",
+      "live": false,
+      "status": "pending"
+    },
+    {
+      "id": "demo:12",
+      "subsystem": "demo",
+      "title": "Demo command skeleton — the demo check, demo folders and the shop-emulating stub Kane",
+      "plan": "docs/superpowers/plans/2026-11-25-firstbad-demo.md",
+      "depends_on": [
+        "core:1",
+        "demo:10",
+        "demo:11"
+      ],
+      "effort": "medium",
+      "files": {
+        "create": [
+          "src/demo/demo-config.ts",
+          "test/fixtures/stub-kane-shop.mjs"
+        ],
+        "modify": [],
+        "test": [
+          "test/demo-config.test.ts"
+        ]
+      },
+      "provides": [
+        "DEMO_PORT = 4173",
+        "interface DemoCheck { url: string; do: string; store: string; expected: string }",
+        "demoCheck(port: number): DemoCheck",
+        "demoServeCommand(port: number): string",
+        "class DemoDirError extends Error",
+        "interface DemoDirs { root: string; shopDir: string; reportDir: string }",
+        "prepareDemoDir(dir: string, force: boolean): DemoDirs",
+        "test/fixtures/stub-kane-shop.mjs (stub kane-cli that computes the Corner Shop total from the served pricing.js and catalog.js; logs to STUB_KANE_LOG)"
+      ],
+      "requires": [
+        "generateDemoRepo(dir: string): GeneratedDemo",
+        "interface GeneratedDemo { dir: string; head: string; goodRef: string; commits: number }",
+        "DEMO_GOOD_TAG = 'v1.0'",
+        "CULPRIT_INDEX = 29"
+      ],
+      "gate": {
+        "run": "npx vitest run test/demo-config.test.ts",
+        "expect": "Tests  3 passed"
+      },
+      "commit": "feat(demo): demo check, demo folders and the shop-emulating stub kane-cli",
+      "human_gate": false,
+      "allow_empty": false,
+      "priority": "must-have",
+      "live": false,
+      "status": "pending"
+    },
+    {
+      "id": "demo:13",
+      "subsystem": "demo",
+      "title": "`firstbad demo` — wire the generated shop into the core flow, with an end-to-end stub test",
+      "plan": "docs/superpowers/plans/2026-11-25-firstbad-demo.md",
+      "depends_on": [
+        "core:1",
+        "core:5",
+        "core:7",
+        "core:8",
+        "demo:10",
+        "demo:11",
+        "demo:12"
+      ],
+      "effort": "high",
+      "files": {
+        "create": [
+          "src/demo/run-demo.ts"
+        ],
+        "modify": [
+          "src/cli.ts"
+        ],
+        "test": [
+          "test/demo-e2e.test.ts"
+        ]
+      },
+      "provides": [
+        "interface DemoOptions { dir: string; port: number; agentArgv: string[] | null; noFix: boolean; force: boolean; kaneCmd: string[]; env: NodeJS.ProcessEnv; print: (line: string) => void; color: boolean; template?: TemplateId; verdictMode?: VerdictMode; promptRoute?: AgentPromptRoute }",
+        "runDemo(o: DemoOptions): Promise<FlowResult>",
+        "firstbad demo [--dir <path>] [--port <n>] [--agent \"<cmd>\" | --agent none] [--no-fix] [--force]"
+      ],
+      "requires": [
+        "type TemplateId = 'commas-assert' | 'sentences-assert' | 'store-only'",
+        "type VerdictMode = 'status+value' | 'value-only'",
+        "type AgentPromptRoute = 'stdin' | 'arg'",
+        "runFlow(o: FlowOptions): Promise<FlowResult>",
+        "interface FlowResult { exitCode: 0 | 1 | 3; report: Report | null; reportPaths: { md: string; json: string } | null; message: string }",
+        "interface CliIO { print(line: string): void; env: NodeJS.ProcessEnv; cwd: string; color: boolean }",
+        "kaneCommand(env: NodeJS.ProcessEnv): string[]",
+        "COMMANDS: Record<string, Command>",
+        "main(argv: string[], io: CliIO): Promise<number>",
+        "parseAgent(value: string | undefined): string[] | null",
+        "generateDemoRepo(dir: string): GeneratedDemo",
+        "DEMO_GOOD_TAG = 'v1.0'",
+        "CULPRIT_SUBJECT = 'refactor(cart): extract price helpers'",
+        "DEMO_PORT = 4173",
+        "demoCheck(port: number): DemoCheck",
+        "demoServeCommand(port: number): string",
+        "class DemoDirError extends Error",
+        "prepareDemoDir(dir: string, force: boolean): DemoDirs",
+        "test/fixtures/stub-kane-shop.mjs (stub kane-cli that computes the Corner Shop total from the served pricing.js and catalog.js; logs to STUB_KANE_LOG)",
+        "test/fixtures/stub-agent.mjs (modes write, noop, fail, restore-from-parent via STUB_AGENT_MODE, STUB_AGENT_FILE, STUB_AGENT_CONTENT; STUB_AGENT_NOOP_FIRST with STUB_AGENT_STATE; logs to STUB_AGENT_LOG)",
+        "test/helpers.ts (ROOT, STUB_KANE, STUB_AGENT, TINY_SERVER, KANE_CMD, VALUE_SERVER, CRASH_SERVER, tempDir, git, makeRepo, bisectRepo, setStubPlan, clearStubEnv, stubRuns)"
+      ],
+      "gate": {
+        "run": "npx vitest run test/demo-e2e.test.ts test/cli.test.ts",
+        "expect": "Test Files  2 passed"
+      },
+      "commit": "feat(demo): firstbad demo runs hunt, confirm and agent fix on the generated shop",
+      "human_gate": false,
+      "allow_empty": false,
+      "priority": "must-have",
+      "live": false,
+      "status": "pending"
+    },
+    {
+      "id": "ship:14",
+      "subsystem": "ship",
+      "title": "README (schema R3-cli-tool v1)",
+      "plan": "docs/superpowers/plans/2026-11-25-firstbad-ship.md",
+      "depends_on": [
+        "core:8",
+        "demo:13"
+      ],
+      "effort": "medium",
+      "files": {
+        "create": [],
+        "modify": [
+          "README.md"
+        ],
+        "test": []
+      },
+      "provides": [
+        "README.md (R3-cli-tool v1)"
+      ],
+      "requires": [
+        "dist/cli.js (bin firstbad: hunt, oracle, --version, --help)",
+        "firstbad demo [--dir <path>] [--port <n>] [--agent \"<cmd>\" | --agent none] [--no-fix] [--force]"
+      ],
+      "gate": {
+        "run": "$want = @('# firstbad','## Demo','## What it does','## Quickstart','## Built at KaneCLI Online Hackathon 2026','## Install','## Usage','## Commands / API reference','## How it works','## Roadmap','## License'); $stamp = '<!-- readme-schema: R3-cli-tool v1 -->'; $lines = Get-Content README.md -Encoding UTF8; $inFence = $false; $got = foreach ($l in $lines) { if ($l -match '^\\x60{3}') { $inFence = -not $inFence } elseif (-not $inFence -and $l -cmatch '^#{1,2} ') { $l } }; $ok = ($got.Count -eq $want.Count); if ($ok) { for ($i = 0; $i -lt $want.Count; $i++) { if ($got[$i] -cne $want[$i]) { $ok = $false } } }; if ($ok -and ($lines[0] -ceq $stamp)) { 'PASS' } else { 'FAIL' }",
+        "expect": "PASS"
+      },
+      "commit": "docs: README (R3-cli-tool v1) with quickstart, usage and known limits",
+      "human_gate": false,
+      "allow_empty": false,
+      "priority": "must-have",
+      "live": false,
+      "status": "pending"
+    },
+    {
+      "id": "ship:15",
+      "subsystem": "ship",
+      "title": "LIVE end-to-end demo hunt (the judges' recorded-run fallback)",
+      "plan": "docs/superpowers/plans/2026-11-25-firstbad-ship.md",
+      "depends_on": [
+        "core:1",
+        "core:2",
+        "core:3",
+        "core:4",
+        "core:5",
+        "core:6",
+        "core:7",
+        "core:8",
+        "core:9",
+        "demo:10",
+        "demo:11",
+        "demo:12",
+        "demo:13",
+        "ship:14"
+      ],
+      "effort": "medium",
+      "model_tier": "top",
+      "files": {
+        "create": [
+          "scripts/live-demo.mjs",
+          "scripts/check-recorded-run.mjs",
+          "docs/demo/recorded-run/report.md",
+          "docs/demo/recorded-run/report.json",
+          "docs/demo/recorded-run/transcript.txt"
+        ],
+        "modify": [],
+        "test": []
+      },
+      "provides": [
+        "docs/demo/recorded-run/ (report.md, report.json, transcript.txt from one live run)",
+        "scripts/live-demo.mjs",
+        "scripts/check-recorded-run.mjs"
+      ],
+      "requires": [
+        "dist/cli.js (bin firstbad: hunt, oracle, --version, --help)",
+        "firstbad demo [--dir <path>] [--port <n>] [--agent \"<cmd>\" | --agent none] [--no-fix] [--force]",
+        "docs/spike/spike-result.json decisions { chosenTemplate, verdictMode, agentPromptRoute, localRunEndWellFormed, replayFaithful, replayHasValues }"
+      ],
+      "gate": {
+        "run": "node scripts/check-recorded-run.mjs",
+        "expect": "PASS"
+      },
+      "commit": "docs(demo): LIVE recorded demo run (hunt, confirm, agent fix, Kane proof)",
+      "human_gate": false,
+      "allow_empty": false,
+      "priority": "must-have",
+      "live": true,
+      "status": "pending"
+    },
+    {
+      "id": "ship:16",
+      "subsystem": "ship",
+      "title": "Stretch — the raw `--objective` escape hatch",
+      "plan": "docs/superpowers/plans/2026-11-25-firstbad-ship.md",
+      "depends_on": [
+        "core:4",
+        "core:5",
+        "core:6",
+        "core:8",
+        "ship:15"
+      ],
+      "effort": "medium",
+      "files": {
+        "create": [],
+        "modify": [
+          "src/check.ts",
+          "src/session.ts",
+          "src/probe.ts",
+          "src/hunt.ts",
+          "src/run.ts",
+          "src/cli.ts"
+        ],
+        "test": [
+          "test/objective.test.ts"
+        ]
+      },
+      "provides": [
+        "validateObjective(objective: string): string[]",
+        "firstbad hunt --objective \"<raw Kane objective>\""
+      ],
+      "requires": [
+        "interface Check { url: string; do: string; store: string; expected: string }",
+        "validateCheck(c: Check): string[]",
+        "interface Session { version: 1; repoDir: string; sessionDir: string; worktreeDir: string; kaneCwd: string; ledgerPath: string; check: Check; template: TemplateId; verdictMode: VerdictMode; serve: string; setup: string | null; kaneCmd: string[]; kaneTimeoutSec: number; readyTimeoutSec: number; setupTimeoutSec: number; maxRuns: number; runsUsed: number; badValue: string | null }",
+        "prepareSession(o: PrepareOptions, log: HuntLog): Promise<Prepared>",
+        "runFlow(o: FlowOptions): Promise<FlowResult>",
+        "main(argv: string[], io: CliIO): Promise<number>",
+        "test/helpers.ts (ROOT, STUB_KANE, STUB_AGENT, TINY_SERVER, KANE_CMD, VALUE_SERVER, CRASH_SERVER, tempDir, git, makeRepo, bisectRepo, setStubPlan, clearStubEnv, stubRuns)"
+      ],
+      "gate": {
+        "run": "npx vitest run test/objective.test.ts test/cli.test.ts test/probe.test.ts",
+        "expect": "Test Files  3 passed"
+      },
+      "commit": "feat(cli): stretch --objective escape hatch for raw Kane objectives",
+      "human_gate": false,
+      "allow_empty": false,
+      "priority": "stretch",
+      "live": false,
+      "status": "pending"
+    }
+  ]
+}
