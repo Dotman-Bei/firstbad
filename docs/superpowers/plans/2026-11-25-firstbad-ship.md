@@ -5,7 +5,7 @@
 **Tech Stack:** Node >= 20, TypeScript 5.9.3, Vitest 3.2.7, cross-spawn 7.0.6, kane-cli >= 0.10.9 (LIVE task only), Claude Code CLI 2.1.229 (LIVE task only), Windows PowerShell 5.1 (README gate).
 **Source spec:** docs/superpowers/specs/2026-11-25-firstbad-design.md
 
-Order: Task 14 (README) → Task 15 (LIVE demo hunt; runs only after every must-have task and the droppable Task 9, unless Task 9 was cut, is green against the stub) → stretch Task 16 (`--objective`), which runs only after Task 15 is green. A replay re-verification stretch task is authored after the day-1 spike, and only if `docs/spike/spike-result.json` shows `replayFaithful: true` and `replayHasValues: true`, so its `testmd` syntax comes from the spike instead of a guess.
+Order: Task 14 (README) → Task 15 (LIVE demo hunt; runs only after every must-have task and the droppable Task 9, unless Task 9 was cut, is green against the stub) → stretch Task 16 (`--objective`), which runs only after Task 15 is green. A replay re-verification stretch task is authored after the day-1 spike, and only if `docs/spike/spike-result.json` shows `replayFaithful: true` and `replayHasValues: true`, so its `testmd` syntax comes from the spike instead of a guess. The spike recorded `replayFaithful: false` and `replayHasValues: false` (both replays passed on both pages and carried no values), so that task is not authored.
 
 ---
 
@@ -14,7 +14,7 @@ Order: Task 14 (README) → Task 15 (LIVE demo hunt; runs only after every must-
 **Files:**
 - Modify: `README.md`
 
-**Depends on:** Task 8, Task 13
+**Depends on:** Task 2.1, Task 8, Task 13
 **Effort:** medium
 **Priority:** must-have
 **Provides:** `README.md (R3-cli-tool v1)`
@@ -134,7 +134,7 @@ Exit codes of `hunt` and `demo`: 0 = confirmed culprit and a fix Kane verified (
 
 ## How it works
 
-1. **The check becomes a Kane objective.** firstbad writes the objective itself, in the comma-chained, store-first style Kane's own cookbook recommends ("go to the URL, do the steps, store the value as 'observed', then assert the stored observed value is ..."). The exact wording was chosen by a live spike against Kane CLI 0.10.9.
+1. **The check becomes a Kane objective.** firstbad writes the objective itself, in the comma-chained, store-first style Kane's own cookbook recommends ("go to the URL, do the steps, then store the value as 'observed'"), and compares the stored value itself; Kane's own pass or fail is only an error signal. A live spike against Kane CLI 0.10.9 chose this wording: when the objective also asked Kane to assert the expected value, Kane failed the run on the page with the wrong total and kept no stored value, so the bad commit would have had no value to recognize it by.
 2. **Bracket.** Kane must fail the bad ref with a stored value (that value becomes the bad signature) and pass the good ref. A run where Kane cannot store anything is retried once and then reported as a mis-phrased check, never as a bug.
 3. **Bisect.** `git bisect run` calls `firstbad oracle` for each commit inside a disposable worktree. The oracle runs your setup, starts your server, waits for the URL, runs one serialized, headless, time-limited Kane check and maps the result: PASS (exit 0) when the stored value matches what you expect, FAIL (exit 1) when it matches the bad signature, SKIP (exit 125) when the commit fails differently (no build, no page, a Kane error after one retry, a third value), ABORT (128) on auth errors or the run cap. It reads both Kane's `run_end` and the stored value, so an upload failure (exit 1 with a passing `run_end`) is not a failure, and a Kane "pass" that stored the wrong value is caught.
 4. **Confirm.** The first bad commit is re-tested together with its parent: culprit FAIL and parent PASS, or the hunt reports it as unconfirmed.
@@ -175,16 +175,16 @@ Message: `docs: README (R3-cli-tool v1) with quickstart, usage and known limits`
 - Create: `docs/demo/recorded-run/report.json`
 - Create: `docs/demo/recorded-run/transcript.txt`
 
-**Depends on:** Task 1, Task 2, Task 3, Task 4, Task 5, Task 6, Task 7, Task 8, Task 9, Task 10, Task 11, Task 12, Task 13, Task 14
+**Depends on:** Task 1, Task 2, Task 2.1, Task 3, Task 4, Task 5, Task 6, Task 7, Task 8, Task 9, Task 10, Task 11, Task 12, Task 13, Task 14
 **Effort:** medium
 **Model tier:** top
 **Priority:** must-have
 **Provides:** `docs/demo/recorded-run/ (report.md, report.json, transcript.txt from one live run)`, `scripts/live-demo.mjs`, `scripts/check-recorded-run.mjs`
-**Requires:** `dist/cli.js (bin firstbad: hunt, oracle, --version, --help)`, `firstbad demo [--dir <path>] [--port <n>] [--agent "<cmd>" | --agent none] [--no-fix] [--force]`, `docs/spike/spike-result.json decisions { chosenTemplate, verdictMode, agentPromptRoute, localRunEndWellFormed, replayFaithful, replayHasValues }`
+**Requires:** `dist/cli.js (bin firstbad: hunt, oracle, --version, --help)`, `firstbad demo [--dir <path>] [--port <n>] [--agent "<cmd>" | --agent none] [--no-fix] [--force]`, `docs/spike/spike-result.json decisions { chosenTemplate, verdictMode, agentPromptRoute, localRunEndWellFormed, replayFaithful, replayHasValues }`, `src/kane-profile.ts rewritten by the re-run (template 'store-only', verdictMode 'value-only')`
 
-The second LIVE task. Dispatch it only after every must-have task and Task 9 are green against the stub. If the orchestrator cuts the droppable Task 9, it marks Task 9 cut (counted as done for this edge) and Task 15 may run. Step 4 spends real Kane credits (about a dozen runs of about 26 credits and 2–3 minutes each, capped by `FIRSTBAD_MAX_RUNS=24`) and runs the real Claude Code agent; it takes 20–60 minutes, so run it in the background and wait for it to exit (the orchestrator may run that single command itself). Run it **once**. The gate never calls Kane. The transcript and reports are committed to a public repo, so the script scrubs token-shaped strings and evidence paths, replaces the temp folder, the home folder and the local user name (raw, forward-slash and JSON-escaped forms) with `<tmp>`, `~` and `<user>`, and scrubs `report.json` value by value after parsing it so the JSON stays valid.
+The last LIVE task. Dispatch it only after every must-have task and Task 9 are green against the stub. If the orchestrator cuts the droppable Task 9, it marks Task 9 cut (counted as done for this edge) and Task 15 may run. Step 4 spends real Kane credits (about a dozen runs of about 26 credits and 2–3 minutes each, capped by `FIRSTBAD_MAX_RUNS=24`) and runs the real Claude Code agent; it takes 20–60 minutes, so run it in the background and wait for it to exit (the orchestrator may run that single command itself). Run it **once**. The gate never calls Kane. The transcript and reports are committed to a public repo, so the script scrubs token-shaped strings and evidence paths, replaces the temp folder, the home folder and the local user name (raw, forward-slash and JSON-escaped forms) with `<tmp>`, `~` and `<user>`, and scrubs `report.json` value by value after parsing it so the JSON stays valid.
 
-`node dist/cli.js demo --dir <dir>` (Task 13) generates the shop in `<dir>/shop`, writes `report.md` and `report.json` to `<dir>/report/`, prints the timeline and exits 0 when the culprit is confirmed and the fix is verified. The expected culprit subject is `refactor(cart): extract price helpers`.
+`node dist/cli.js demo --dir <dir>` (Task 13) generates the shop in `<dir>/shop`, writes `report.md` and `report.json` to `<dir>/report/`, prints the timeline and exits 0 when the culprit is confirmed and the fix is verified. The expected culprit subject is `refactor(cart): extract price helpers`. `firstbad demo` passes no template or verdict mode, so the hunt takes both from `KANE_PROFILE` in `src/kane-profile.ts`, which the spike re-run (Task 2.1) set to `store-only` / `value-only` after store-only stored the value on both spike pages; nothing in this task names a template.
 
 - [ ] **Step 1: Write `scripts/live-demo.mjs`**
 

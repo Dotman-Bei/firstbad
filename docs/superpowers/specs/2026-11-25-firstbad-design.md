@@ -67,7 +67,7 @@ firstbad --version | --help
 | `FIRSTBAD_KANE` | `kane-cli` | Kane command (split shell-style into argv). Tests point it at a stub. |
 | `FIRSTBAD_MIN_BALANCE` | `500` | Refuse to start (hunt, demo, spike, live demo) when `kane-cli balance` is below this. |
 | `FIRSTBAD_MAX_RUNS` | `16` | Cap on Kane invocations per hunt (retries count). Reaching it aborts the bisect. The LIVE demo hunt task sets `24`. |
-| `FIRSTBAD_SPIKE_MAX_RUNS` | `8` | Cap on credit-consuming Kane invocations in the day-1 spike (room to try template candidates). |
+| `FIRSTBAD_SPIKE_MAX_RUNS` | `8` | Cap on credit-consuming Kane invocations in the day-1 spike (room to try template candidates); the spike re-run counts the 4 recorded day-1 runs against it and needs 2 more. |
 | `FIRSTBAD_MAX_FIX_ATTEMPTS` | `3` | Agent attempts before the fix is declared unverified. |
 | `FIRSTBAD_KANE_TIMEOUT_SEC` | `300` | Passed as `--timeout`; the outer kill timer is this + 60 s. The LIVE demo hunt task sets it explicitly. |
 | `FIRSTBAD_AGENT_TIMEOUT_SEC` | `900` | Kill timer for one agent attempt. |
@@ -100,13 +100,16 @@ and never write `{{name}}` (that form is only for user variables). So "assert be
 part of the cause; the clause structure and the stored-value reference matter too. firstbad never
 emits `{{…}}`.
 
-**Ordered template candidates** (`TemplateId`, tried in this order by the day-1 spike):
+**Ordered template candidates** (`TemplateId`, considered in this order by the day-1 spike). A
+template is accepted only if it stores the value on **both** spike pages: `$18.00` on the passing
+page and `$20.00` on the failing page. Storing on the passing page alone is not enough: the hunt
+needs the bad ref's stored value to set the bad signature (section 4 bracket rules).
 
-| id | Template (exact) | Kane asserts? |
-|---|---|---|
-| `commas-assert` | `Go to {url}, {do}, store {store} as 'observed', then assert the stored observed value is "{expected}"` | yes |
-| `sentences-assert` | `Go to {url}. {do}. Store {store} as 'observed'. Then assert that the stored observed value is "{expected}".` | yes |
-| `store-only` | `Go to {url}, {do}, then store {store} as 'observed'` | **no** — firstbad compares the value itself; Kane's status is only an error signal |
+| id | Template (exact) | Kane asserts? | Day-1 spike evidence (2026-11-25) |
+|---|---|---|---|
+| `commas-assert` | `Go to {url}, {do}, store {store} as 'observed', then assert the stored observed value is "{expected}"` | yes | **eliminated** — stored `$18.00` on the `$18.00` page, but on the `$20.00` page (run `fail-page-commas-assert`) the failed assertion failed the run: `status failed`, `result_code 710`, `final_state {}`, no stored value |
+| `sentences-assert` | `Go to {url}. {do}. Store {store} as 'observed'. Then assert that the stored observed value is "{expected}".` | yes | **eliminated without a run** — assertion-bearing, so it shares the cause recorded in `fail-page-commas-assert` |
+| `store-only` | `Go to {url}, {do}, then store {store} as 'observed'` | **no** — firstbad compares the value itself; Kane's status is only an error signal | the only remaining candidate: the spike re-run (core Task 2.1) runs it on the `$18.00` page and then the `$20.00` page and chooses it, with `value-only`, only if both runs store their value |
 
 `{do}` and `{store}` are trimmed and lose trailing `.`/`,` characters before insertion. The stored
 key is always `observed`. Validation: `url` must start with `http://` or `https://`; `do`, `store`,
@@ -120,7 +123,11 @@ The scaffold creates it with `commas-assert` / `status+value` / `stdin` /
 with the template it chose and the verdict mode it measured; the spike gate fails if the file and
 `docs/spike/spike-result.json` disagree. Core code reads only this constant. `verdictMode` is
 `value-only` when the chosen template is `store-only`, or when Kane's own assertion status disagreed
-with the stored value in any spike run; otherwise `status+value`.
+with the stored value in any spike run; otherwise `status+value`. Task 2 first wrote
+`commas-assert` / `status+value`; that choice was wrong (it lost the value on the `$20.00` page), so
+the spike re-run (Task 2.1) is the only writer that may set the final profile, and it writes
+`store-only` / `value-only` only when store-only stored both values. If store-only fails on either
+page the re-run stops, leaves the profile unchanged and the user decides.
 
 **Value matching** (`valuesMatch(a, b)`): normalize each (trim, collapse whitespace, lowercase,
 strip one pair of wrapping quotes); equal → match. Otherwise, if each contains exactly one number
@@ -344,10 +351,11 @@ runs first because it costs no credits:
    worked.
 2. Balance before (floor check); `kane-cli --version`; `kane-cli testmd --help` (free, recorded).
 3. **Template selection** on the `$18.00` page: try the candidates in order (`commas-assert`,
-   `sentences-assert`, `store-only`), each a full `run --name firstbad-spike-<id>`; the first whose
-   `run_end` is well-formed and whose `final_state.observed` matches `$18.00` is chosen.
-4. Chosen template on the `$20.00` page: full `run` → expect observed `$20.00` (and, for an assert
-   template, status failed).
+   `sentences-assert`, `store-only`), each a full `run --name firstbad-spike-<id>`, until one has a
+   well-formed `run_end` whose `final_state.observed` matches `$18.00`.
+4. That template on the `$20.00` page: full `run` → it must store `$20.00` (and, for an assert
+   template, report status failed). **A template is chosen only if it stored the value on both
+   pages**; passing the `$18.00` page alone is not enough.
 5. Replay the chosen recording with `testmd run <recording> --agent --headless --timeout 300` on
    the `$20.00` page (expect failed) and on the `$18.00` page (expect passed).
 6. Balance after; delta. Every run records exit code, **wall-clock seconds**, whether
@@ -358,10 +366,37 @@ Outputs `docs/spike/spike-result.json`, `docs/spike/kane-spike.md`, and the rewr
 chosen template is `store-only` or any Kane status disagreed with its stored value),
 `localRunEndWellFormed`, `replayFaithful`, `replayHasValues`, `nestedAgent.ok` + `route`. At most
 `FIRSTBAD_SPIKE_MAX_RUNS` (8) credit-consuming runs. Gate `node scripts/spike/check-spike.mjs`
-prints `PASS` only when a template was chosen with a well-formed local `run_end`, the nested agent
-worked by some route, `src/kane-profile.ts` matches the result, and no token pattern appears; it
-prints `FLAG:` lines for anything the orchestrator must surface (stdin route failed, replay
-unfaithful, `value-only` mode).
+prints `PASS` only when the result is the re-run's (`spikeVersion` 2), the chosen template has run
+records that stored `$18.00` on the `$18.00` page **and** `$20.00` on the `$20.00` page, the
+verdict mode is `value-only` when `store-only` is chosen, the local `run_end` was well-formed, the
+nested agent worked by some route, `src/kane-profile.ts` and `docs/spike/kane-spike.md` match the
+result, the recorded runs stay within the cap, and no token, evidence-path or `session_dir` text
+appears; it prints `FLAG:` lines for anything the orchestrator must surface (stdin route failed,
+replay unfaithful, `value-only` mode, the re-run balance).
+
+**Day-1 spike evidence (2026-11-25, kane-cli 0.10.9, commit `af63046`).** Nested agent ok via stdin.
+`commas-assert` stored `$18.00` on the `$18.00` page (status passed, result_code 100), but on the
+`$20.00` page Kane's assertion failed and the run kept nothing: `status failed`, `result_code 710`,
+`final_state {}`, summary "the agent's read step did not store that amount in {{observed}}". With
+that template the hunt's bracket of the bad ref would get an empty value and abort "your check looks
+mis-phrased". Both `testmd` replays passed on both pages with no values (`replayFaithful: false`,
+`replayHasValues: false`): re-verification stays on full runs and the replay stretch task is not
+authored. Balance 11152.2235 → 11110.4166 (delta 41.8069; `credits_consumed` sum 38.22); mean
+95.3 s per Kane invocation.
+
+**Spike re-run** (core Task 2.1, LIVE, user decision 2026-11-25): the same
+`scripts/spike/run-spike.mjs`, rewritten, reuses the recorded evidence instead of re-spending. It
+carries the 4 day-1 runs and the nested-agent result forward, eliminates `commas-assert` (its
+recorded `$20.00` run) and `sentences-assert` (same cause, no run), then runs only `store-only`
+on the `$18.00` page and then the `$20.00` page with the probe's argv
+(`run <objective> --agent --headless --timeout 300 --max-steps 25`). Both values stored → choose
+`store-only` with `value-only` and rewrite `src/kane-profile.ts`. Either value missing → stop
+(the `$20.00` run is skipped after an `$18.00` failure), print and record the raw `run_end`
+fields (status, reason, result_code, final_state keys), leave the profile unchanged, exit 1; the
+task reports BLOCKED and the user decides. Credit guard: balance readable and at least
+`FIRSTBAD_MIN_BALANCE` before, measured before and after and reported; at most
+`FIRSTBAD_SPIKE_MAX_RUNS` counting the day-1 runs (4 + 2 ≤ 8). It writes `spikeVersion: 2` with a
+`templates[]` verdict per candidate, the carried `day1` summary and every run record.
 
 **Live demo hunt** (last must-have): `scripts/live-demo.mjs` runs `node dist/cli.js demo` with
 `FIRSTBAD_MAX_RUNS=24` and `FIRSTBAD_KANE_TIMEOUT_SEC=300` (unless set), real kane-cli and the default Claude Code agent, in a temp dir;
@@ -382,9 +417,10 @@ SKIP, Kane runs ≤ 24, and no token/evidence pattern appears.
 - The demo-fixture branch (shop files → history generator → demo skeleton with the shop stub)
   depends only on the scaffold and runs alongside the core chain. The LIVE spike also depends only
   on the scaffold: it is the first task dispatched after it, and the core chain proceeds while it
-  runs (core tests pass explicit template/mode values and never read the profile). The LIVE demo
-  hunt depends on the spike. The LIVE demo hunt depends on
-  every must-have task (and the droppable one unless it is cut).
+  runs (core tests pass explicit template/mode values, or use stub Kane scenarios whose verdicts
+  do not depend on the template, so they pass under any profile). The spike re-run (Task 2.1)
+  depends on the spike. The README and the LIVE demo hunt depend on the re-run, and the LIVE demo
+  hunt depends on every must-have task (and the droppable one unless it is cut).
 
 ## 14. Known limits (go into the README)
 
@@ -426,14 +462,23 @@ SKIP, Kane runs ≤ 24, and no token/evidence pattern appears.
 11. Empty observed value retried once (counts against the cap) before SKIP / mis-phrased abort;
     Kane timeout default 300 s; spike cap 8 → user, same probe (one trivial 4-step run ≈ 160 s wall
     clock; balance fell 26.35 while `credits_consumed` said 15.2).
+12. Template selection needs the stored value on both spike pages; the recorded day-1 evidence is
+    reused (`commas-assert` proven to lose the value on the `$20.00` page, `sentences-assert`
+    eliminated by the same cause without a run); only `store-only` is re-run, on `$18.00` then
+    `$20.00` (about 2 runs); both stored → `store-only` + `value-only`; otherwise stop and report the
+    raw `run_end` fields; the profile is still written only by the spike; the credit guard stays →
+    user, 2026-11-25, after the day-1 spike's `fail-page-commas-assert` run.
 
 ## 16. Resolved by the spike (not guessed in the core plan)
 
 - Which objective template Kane actually follows (store, then judge), and whether its own
-  assertion status can be trusted (`verdictMode`).
+  assertion status can be trusted (`verdictMode`). Day 1: an assertion-bearing objective loses the
+  stored value when the assertion fails, so the assert templates are out; the re-run (Task 2.1)
+  decides whether `store-only` (with `value-only`) stores the value on both pages.
 - Whether a local `http://` run returns a well-formed `run_end` (blocking if not).
 - The exact `testmd` replay syntax and whether its output carries stored values (decides the
-  replay stretch task).
+  replay stretch task). Day 1: `testmd run <recording> --agent --headless --timeout 300` passed on
+  both pages and carried no values, so the replay stretch task is not authored.
 - Real credit and wall-clock cost per run (budget numbers for the README and the demo edit).
 - Whether `claude -p` with stdin and `CLAUDECODE` removed edits files when spawned from inside
   Claude Code (if not, the agent adapter's default route changes to the prompt-as-argument route).
