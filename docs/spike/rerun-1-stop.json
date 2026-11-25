@@ -1,0 +1,50 @@
+{
+  "attempt": 1,
+  "ranAt": "2026-11-25T16:58:33.771Z",
+  "platform": "win32 x64",
+  "node": "v22.23.4",
+  "kaneVersion": "0.10.9",
+  "objective": "Go to http://127.0.0.1:4199/, look at the order summary, then store the total amount shown next to the word Total as 'observed'",
+  "parser": "old rule: final_state.observed, else a final_state with exactly one key; final_state had the keys url and total, so the parsed value was empty (the value of total was not recorded)",
+  "balance": {
+    "before": 11110.4166,
+    "after": 11091.7249,
+    "delta": 18.6917
+  },
+  "creditsConsumedSum": 16.68,
+  "stop": "STOP: store-only did not store $18.00 on the $18.00 page (select-store-only): run_end status=passed, reason=\"Objective completed\", result_code=100, final_state keys=[url, total], observed=\"\"",
+  "runs": [
+    {
+      "id": "select-store-only",
+      "kind": "run",
+      "template": "store-only",
+      "page": "$18.00",
+      "objective": "Go to http://127.0.0.1:4199/, look at the order summary, then store the total amount shown next to the word Total as 'observed'",
+      "exitCode": 0,
+      "timedOut": false,
+      "spawnError": null,
+      "wallSec": 124.5,
+      "lines": 14,
+      "firstLineIsJson": true,
+      "streamStart": true,
+      "runEnd": {
+        "status": "passed",
+        "summary": "Reviewed the order summary as requested.\nRead the amount shown next to “Total”: $18.00.",
+        "oneLiner": "reviewed the order summary on the checkout page",
+        "reason": "Objective completed",
+        "resultCode": "100",
+        "creditsConsumed": 16.676782499999998,
+        "durationSec": 83,
+        "finalStateKeys": [
+          "url",
+          "total"
+        ],
+        "observed": "",
+        "observedKey": null,
+        "blamesTest": false
+      },
+      "testMdDone": null,
+      "errors": []
+    }
+  ]
+}

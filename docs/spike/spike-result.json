@@ -1,12 +1,15 @@
 {
-  "spikeVersion": 1,
-  "ranAt": "2026-11-25T16:25:46.676Z",
+  "spikeVersion": 2,
+  "attempt": 2,
+  "ranAt": "2026-11-25T17:54:14.155Z",
   "platform": "win32 x64",
   "node": "v22.23.4",
   "kaneVersion": "0.10.9",
+  "selectionRule": "a template is accepted only if it stores the value on both the $18.00 page and the $20.00 page",
+  "parserRule": "final_state.observed if present; else the one key other than url; two or more candidate keys give an empty value (retried once), never a guess",
   "limits": {
     "minBalance": 500,
-    "maxRuns": 8,
+    "rerunMaxRuns": 4,
     "timeoutSec": 300
   },
   "check": {
@@ -15,16 +18,64 @@
     "store": "the total amount shown next to the word Total",
     "expected": "$18.00"
   },
+  "objective": "Go to http://127.0.0.1:4199/, look at the order summary, then store the total amount shown next to the word Total in a variable named 'observed'",
   "balance": {
-    "before": 11152.2235,
-    "after": 11110.4166,
-    "delta": 41.8069,
-    "beforeRaw": "Available credits: 11152.2235"
+    "before": 11091.7249,
+    "after": 11060.0836,
+    "delta": 31.6413,
+    "beforeRaw": "Available credits: 11091.7249"
   },
-  "creditsConsumedSum": 38.22,
-  "meanWallSec": 95.3,
-  "recording": "firstbad-spike-commas-assert_test.md",
-  "testmdHelp": "Usage: kane-cli testmd [options] [command]\n\nManage test.md files (run, list, status, delete, export, sync)\n\nOptions:\n  -h, --help               display help for command\n\nCommands:\n  delete [options] <path>  Remove output-<stem>/ and the *_test.md source file\n                           (TMS untouched)\n  export [options] <path>  Generate standalone test code (Playwright)\n  list [options]           List *_test.md files in the working directory\n                           (recursive)\n  run [options] <path>     Run a test from a *_test.md file\n  status <path>            Print local meta.json for a *_test.md (no live TMS\n                           check in v1)\n  sync [options] <path>    Zip the testmd + imports + replay outputs and push\n                           {commit_id}-testmd.zip to cloud",
+  "kaneRuns": 2,
+  "creditsConsumedSum": 29.23,
+  "meanWallSec": 84.4,
+  "observedKeys": {
+    "$18.00": "total",
+    "$20.00": "observed"
+  },
+  "day1": {
+    "commit": "af63046",
+    "ranAt": "2026-11-25T16:25:46.676Z",
+    "kaneVersion": "0.10.9",
+    "limits": {
+      "minBalance": 500,
+      "maxRuns": 8,
+      "timeoutSec": 300
+    },
+    "balance": {
+      "before": 11152.2235,
+      "after": 11110.4166,
+      "delta": 41.8069,
+      "beforeRaw": "Available credits: 11152.2235"
+    },
+    "creditsConsumedSum": 38.22,
+    "meanWallSec": 95.3,
+    "recording": "firstbad-spike-commas-assert_test.md",
+    "testmdHelp": "Usage: kane-cli testmd [options] [command]\n\nManage test.md files (run, list, status, delete, export, sync)\n\nOptions:\n  -h, --help               display help for command\n\nCommands:\n  delete [options] <path>  Remove output-<stem>/ and the *_test.md source file\n                           (TMS untouched)\n  export [options] <path>  Generate standalone test code (Playwright)\n  list [options]           List *_test.md files in the working directory\n                           (recursive)\n  run [options] <path>     Run a test from a *_test.md file\n  status <path>            Print local meta.json for a *_test.md (no live TMS\n                           check in v1)\n  sync [options] <path>    Zip the testmd + imports + replay outputs and push\n                           {commit_id}-testmd.zip to cloud",
+    "decisions": {
+      "chosenTemplate": "commas-assert",
+      "verdictMode": "status+value",
+      "agentPromptRoute": "stdin",
+      "localRunEndWellFormed": true,
+      "replayFaithful": false,
+      "replayHasValues": false
+    },
+    "flags": [
+      "the $20.00 page run did not store $20.00"
+    ]
+  },
+  "rerun1": {
+    "ranAt": "2026-11-25T16:58:33.771Z",
+    "kaneVersion": "0.10.9",
+    "objective": "Go to http://127.0.0.1:4199/, look at the order summary, then store the total amount shown next to the word Total as 'observed'",
+    "parser": "old rule: final_state.observed, else a final_state with exactly one key; final_state had the keys url and total, so the parsed value was empty (the value of total was not recorded)",
+    "balance": {
+      "before": 11110.4166,
+      "after": 11091.7249,
+      "delta": 18.6917
+    },
+    "creditsConsumedSum": 16.68,
+    "stop": "STOP: store-only did not store $18.00 on the $18.00 page (select-store-only): run_end status=passed, reason=\"Objective completed\", result_code=100, final_state keys=[url, total], observed=\"\""
+  },
   "nestedAgent": {
     "ok": true,
     "route": "stdin",
@@ -38,8 +89,38 @@
         "spawnError": null,
         "outputTail": "`hello.txt` now contains exactly `new` (3 bytes, no trailing newline). No other files touched and no shell commands run."
       }
-    ]
+    ],
+    "carriedFrom": "day-1"
   },
+  "templates": [
+    {
+      "id": "commas-assert",
+      "status": "eliminated",
+      "reason": "stored $18.00 on the $18.00 page (select-commas-assert), but on the $20.00 page (fail-page-commas-assert) run_end status=failed, reason=\"Final verification failed: \\\"The stored {{observed}} value is \\\"$18.00\\\".\\\"\", result_code=710, final_state keys=[], observedKey=none, observed=\"\": no stored value, so the bad ref's signature would be empty",
+      "evidence": [
+        "select-commas-assert",
+        "fail-page-commas-assert"
+      ]
+    },
+    {
+      "id": "sentences-assert",
+      "status": "eliminated",
+      "reason": "not run: an assertion-bearing template shares the cause recorded in fail-page-commas-assert (a failed assertion fails the page and loses the stored value)",
+      "evidence": [
+        "fail-page-commas-assert"
+      ]
+    },
+    {
+      "id": "store-only",
+      "status": "accepted",
+      "reason": "returned $18.00 on the $18.00 page (rerun2-pass-page, key 'total') and $20.00 on the $20.00 page (rerun2-fail-page, key 'observed') with the wording \"in a variable named 'observed'\"; attempt 1 (select-store-only, old wording and old parser) stored under 'total'",
+      "evidence": [
+        "select-store-only",
+        "rerun2-pass-page",
+        "rerun2-fail-page"
+      ]
+    }
+  ],
   "runs": [
     {
       "id": "select-commas-assert",
@@ -70,7 +151,8 @@
       },
       "testMdDone": null,
       "errors": [],
-      "stderrTail": "Skill update available: not installed → 0.1.4 — run `kane-cli install skill`\n\nRunning on: Desktop · Chrome\n"
+      "stderrTail": "Skill update available: not installed → 0.1.4 — run `kane-cli install skill`\n\nRunning on: Desktop · Chrome\n",
+      "phase": "day-1"
     },
     {
       "id": "fail-page-commas-assert",
@@ -98,7 +180,8 @@
       },
       "testMdDone": null,
       "errors": [],
-      "stderrTail": "Skill update available: not installed → 0.1.4 — run `kane-cli install skill`\n\nRunning on: Desktop · Chrome\n"
+      "stderrTail": "Skill update available: not installed → 0.1.4 — run `kane-cli install skill`\n\nRunning on: Desktop · Chrome\n",
+      "phase": "day-1"
     },
     {
       "id": "replay-fail-page",
@@ -129,7 +212,8 @@
         "durationSec": 33
       },
       "errors": [],
-      "stderrTail": "Skill update available: not installed → 0.1.4 — run `kane-cli install skill`\n\n"
+      "stderrTail": "Skill update available: not installed → 0.1.4 — run `kane-cli install skill`\n\n",
+      "phase": "day-1"
     },
     {
       "id": "replay-pass-page",
@@ -160,18 +244,120 @@
         "durationSec": 13
       },
       "errors": [],
-      "stderrTail": "Skill update available: not installed → 0.1.4 — run `kane-cli install skill`\n\n"
+      "stderrTail": "Skill update available: not installed → 0.1.4 — run `kane-cli install skill`\n\n",
+      "phase": "day-1"
+    },
+    {
+      "id": "select-store-only",
+      "kind": "run",
+      "template": "store-only",
+      "page": "$18.00",
+      "objective": "Go to http://127.0.0.1:4199/, look at the order summary, then store the total amount shown next to the word Total as 'observed'",
+      "exitCode": 0,
+      "timedOut": false,
+      "spawnError": null,
+      "wallSec": 124.5,
+      "lines": 14,
+      "firstLineIsJson": true,
+      "streamStart": true,
+      "runEnd": {
+        "status": "passed",
+        "summary": "Reviewed the order summary as requested.\nRead the amount shown next to “Total”: $18.00.",
+        "oneLiner": "reviewed the order summary on the checkout page",
+        "reason": "Objective completed",
+        "resultCode": "100",
+        "creditsConsumed": 16.676782499999998,
+        "durationSec": 83,
+        "finalStateKeys": [
+          "url",
+          "total"
+        ],
+        "observed": "",
+        "observedKey": null,
+        "blamesTest": false
+      },
+      "testMdDone": null,
+      "errors": [],
+      "phase": "re-run-1"
+    },
+    {
+      "id": "rerun2-pass-page",
+      "phase": "re-run-2",
+      "kind": "run",
+      "template": "store-only",
+      "page": "$18.00",
+      "objective": "Go to http://127.0.0.1:4199/, look at the order summary, then store the total amount shown next to the word Total in a variable named 'observed'",
+      "exitCode": 0,
+      "timedOut": false,
+      "spawnError": null,
+      "wallSec": 101,
+      "lines": 14,
+      "firstLineIsJson": true,
+      "streamStart": true,
+      "runEnd": {
+        "status": "passed",
+        "summary": "Reviewed the order summary as requested.\nRead the amount shown next to Total: $18.00.",
+        "oneLiner": "reviewed the order summary on the checkout page",
+        "reason": "Objective completed",
+        "resultCode": "100",
+        "creditsConsumed": 16.3830425,
+        "durationSec": 45.5,
+        "finalStateKeys": [
+          "url",
+          "total"
+        ],
+        "observed": "$18.00",
+        "observedKey": "total",
+        "blamesTest": false
+      },
+      "testMdDone": null,
+      "errors": [],
+      "stderrTail": "Skill update available: not installed → 0.1.4 — run `kane-cli install skill`\n\nRunning on: Desktop · Chrome\n"
+    },
+    {
+      "id": "rerun2-fail-page",
+      "phase": "re-run-2",
+      "kind": "run",
+      "template": "store-only",
+      "page": "$20.00",
+      "objective": "Go to http://127.0.0.1:4199/, look at the order summary, then store the total amount shown next to the word Total in a variable named 'observed'",
+      "exitCode": 0,
+      "timedOut": false,
+      "spawnError": null,
+      "wallSec": 67.8,
+      "lines": 14,
+      "firstLineIsJson": true,
+      "streamStart": true,
+      "runEnd": {
+        "status": "passed",
+        "summary": "You asked to review the order summary and identify the total.\nThe order summary was checked, and the total shown next to “Total” was $20.00.",
+        "oneLiner": "reviewed the order total on the order summary page",
+        "reason": "Objective completed",
+        "resultCode": "100",
+        "creditsConsumed": 12.851205,
+        "durationSec": 38.9,
+        "finalStateKeys": [
+          "url",
+          "observed"
+        ],
+        "observed": "$20.00",
+        "observedKey": "observed",
+        "blamesTest": false
+      },
+      "testMdDone": null,
+      "errors": [],
+      "stderrTail": "Skill update available: not installed → 0.1.4 — run `kane-cli install skill`\n\nRunning on: Desktop · Chrome\n"
     }
   ],
   "decisions": {
-    "chosenTemplate": "commas-assert",
-    "verdictMode": "status+value",
+    "chosenTemplate": "store-only",
+    "verdictMode": "value-only",
     "agentPromptRoute": "stdin",
     "localRunEndWellFormed": true,
     "replayFaithful": false,
     "replayHasValues": false
   },
   "flags": [
-    "the $20.00 page run did not store $20.00"
+    "rerun2-pass-page: Kane stored the value under 'total', not 'observed' (read by the one-other-key rule; firstbad still compares it with the expected and the bad ref's value)"
   ]
 }

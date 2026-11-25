@@ -13,8 +13,8 @@ export interface KaneProfile {
 export const TEMPLATE_IDS: readonly TemplateId[] = ['commas-assert', 'sentences-assert', 'store-only'];
 
 export const KANE_PROFILE: KaneProfile = {
-  template: 'commas-assert',
-  verdictMode: 'status+value',
+  template: 'store-only',
+  verdictMode: 'value-only',
   agentPromptRoute: 'stdin',
-  source: 'day-1 spike 2026-11-25',
+  source: 'day-1 spike re-run 2026-11-25',
 };
