@@ -7,6 +7,8 @@ import { parseAgent } from './agent.js';
 import { validateCheck, type Check } from './check.js';
 import { cleanLeftovers } from './clean.js';
 import { runOracle } from './oracle.js';
+import { DEMO_PORT, DemoDirError } from './demo/demo-config.js';
+import { runDemo } from './demo/run-demo.js';
 import { runFlow } from './run.js';
 import { splitCommand } from './util/proc.js';
 import { VERSION } from './version.js';
@@ -28,6 +30,8 @@ export const HELP = [
   '                [--bad <ref>] [--setup "<cmd>"] [--agent "<cmd>" | --agent none] [--no-fix] [--out <dir>] [--repo <path>]',
   '  firstbad oracle --session <file>    a git-bisect-run script (exit 0 good, 1 bad, 125 skip, 128 abort)',
   '  firstbad clean [--repo <path>]      remove leftover firstbad worktrees and session folders',
+  '  firstbad demo [--dir <path>] [--port <n>] [--agent "<cmd>" | --agent none] [--no-fix] [--force]',
+  '                                      generate the 40-commit Corner Shop and hunt + fix its planted bug',
   '  firstbad --version | --help',
   '',
   'Environment: FIRSTBAD_KANE, FIRSTBAD_MIN_BALANCE (500), FIRSTBAD_MAX_RUNS (16), FIRSTBAD_MAX_FIX_ATTEMPTS (3),',
@@ -122,9 +126,57 @@ async function cleanCommand(args: string[], io: CliIO): Promise<number> {
   }
 }
 
+const DEMO_OPTIONS = {
+  dir: { type: 'string' },
+  port: { type: 'string' },
+  agent: { type: 'string' },
+  'no-fix': { type: 'boolean' },
+  force: { type: 'boolean' },
+} as const;
+
+function parseDemo(args: string[]) {
+  return parseArgs({ args, options: DEMO_OPTIONS, allowPositionals: false, strict: true }).values;
+}
+
+async function demoCommand(args: string[], io: CliIO): Promise<number> {
+  let values: ReturnType<typeof parseDemo>;
+  try {
+    values = parseDemo(args);
+  } catch (err) {
+    io.print(`firstbad demo: ${err instanceof Error ? err.message : String(err)}`);
+    return 2;
+  }
+  const port = values.port === undefined ? DEMO_PORT : Number(values.port);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    io.print('firstbad demo: --port must be an integer between 1 and 65535');
+    return 2;
+  }
+  try {
+    const r = await runDemo({
+      dir: path.resolve(io.cwd, values.dir ?? 'firstbad-demo'),
+      port,
+      agentArgv: parseAgent(values.agent),
+      noFix: values['no-fix'] === true,
+      force: values.force === true,
+      kaneCmd: kaneCommand(io.env),
+      env: io.env,
+      print: (l) => io.print(l),
+      color: io.color,
+    });
+    return r.exitCode;
+  } catch (err) {
+    if (err instanceof DemoDirError) {
+      io.print(`firstbad demo: ${err.message}`);
+      return 2;
+    }
+    throw err;
+  }
+}
+
 export const COMMANDS: Record<string, Command> = {
   hunt: huntCommand,
   oracle: oracleCommand,
+  demo: demoCommand,
   clean: cleanCommand,
 };
 
