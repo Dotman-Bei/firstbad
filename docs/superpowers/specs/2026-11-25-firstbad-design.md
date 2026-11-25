@@ -67,9 +67,9 @@ firstbad --version | --help
 | `FIRSTBAD_KANE` | `kane-cli` | Kane command (split shell-style into argv). Tests point it at a stub. |
 | `FIRSTBAD_MIN_BALANCE` | `500` | Refuse to start (hunt, demo, spike, live demo) when `kane-cli balance` is below this. |
 | `FIRSTBAD_MAX_RUNS` | `16` | Cap on Kane invocations per hunt (retries count). Reaching it aborts the bisect. The LIVE demo hunt task sets `24`. |
-| `FIRSTBAD_SPIKE_MAX_RUNS` | `4` | Cap on credit-consuming Kane invocations in the day-1 spike. |
+| `FIRSTBAD_SPIKE_MAX_RUNS` | `8` | Cap on credit-consuming Kane invocations in the day-1 spike (room to try template candidates). |
 | `FIRSTBAD_MAX_FIX_ATTEMPTS` | `3` | Agent attempts before the fix is declared unverified. |
-| `FIRSTBAD_KANE_TIMEOUT_SEC` | `180` | Passed as `--timeout`; the outer kill timer is this + 60 s. |
+| `FIRSTBAD_KANE_TIMEOUT_SEC` | `300` | Passed as `--timeout`; the outer kill timer is this + 60 s. The LIVE demo hunt task sets it explicitly. |
 | `FIRSTBAD_AGENT_TIMEOUT_SEC` | `900` | Kill timer for one agent attempt. |
 | `FIRSTBAD_READY_TIMEOUT_SEC` | `30` | How long the served URL may take to answer. |
 | `FIRSTBAD_SETUP_TIMEOUT_SEC` | `600` | Kill timer for the setup command. |
@@ -81,22 +81,46 @@ firstbad sets for children: `KANE_CLI_USER_AGENT=firstbad` (Kane, unless already
 (agent). It **removes `CLAUDECODE`** from the agent's environment so a nested `claude -p` runs when
 firstbad itself is launched from inside Claude Code.
 
-## 3. The check and the objective template (store-first, fixed)
+## 3. The check and the objective templates (store-first, cookbook style)
 
 ```ts
 interface Check { url: string; do: string; store: string; expected: string }
 ```
 
 The Kane objective is always generated, never user-written (the raw `--objective` escape hatch is a
-stretch task). Template, exact:
+stretch task). **Why the wording matters (live facts, 2026-11-25):** the first live run (13:09 WAT)
+asserted before storing and stored nothing. A second probe with this spec's original sentence-style
+template ("… Then store … as 'observed'. Finally, verify that the stored value 'observed' is exactly
+…") against https://example.com also failed: `final_state {}`, `result_code 750` ("analyzer found
+no heading"). Kane **dropped the store clause** and ran one assert step reading
+`The stored value {{observed}} is exactly "Example Domain"`. Kane's own cookbook
+(`LambdaTest/kane-cli` `.claude/skills/kane-cli/references/objectives-cookbook.md` §4–5) says: chain
+the clauses with commas, refer to a stored value in plain English ("the stored observed value"),
+and never write `{{name}}` (that form is only for user variables). So "assert before store" was only
+part of the cause; the clause structure and the stored-value reference matter too. firstbad never
+emits `{{…}}`.
 
-```
-Go to {url} and wait for the page to load. {do} Then store {store} as 'observed'. Finally, verify that the stored value 'observed' is exactly "{expected}".
-```
+**Ordered template candidates** (`TemplateId`, tried in this order by the day-1 spike):
 
-`{do}` gets a trailing period if it has none. The stored key is always `observed`. Validation:
-`url` must start with `http://` or `https://`; `do`, `store`, `expected` non-empty after trim;
-`expected` must not contain `"`.
+| id | Template (exact) | Kane asserts? |
+|---|---|---|
+| `commas-assert` | `Go to {url}, {do}, store {store} as 'observed', then assert the stored observed value is "{expected}"` | yes |
+| `sentences-assert` | `Go to {url}. {do}. Store {store} as 'observed'. Then assert that the stored observed value is "{expected}".` | yes |
+| `store-only` | `Go to {url}, {do}, then store {store} as 'observed'` | **no** — firstbad compares the value itself; Kane's status is only an error signal |
+
+`{do}` and `{store}` are trimmed and lose trailing `.`/`,` characters before insertion. The stored
+key is always `observed`. Validation: `url` must start with `http://` or `https://`; `do`, `store`,
+`expected` non-empty after trim; none of them may contain `{{`; `expected` must not contain `"`.
+
+**The Kane profile** (`src/kane-profile.ts`, a committed constant): `{ template: TemplateId;
+verdictMode: 'status+value' | 'value-only'; agentPromptRoute: 'stdin' | 'arg'; source: string }`.
+The scaffold creates it with `commas-assert` / `status+value` / `stdin` /
+`default (spike not yet run)`. `agentPromptRoute` is how the fix loop hands the prompt to the agent
+(on stdin, or as the last argv entry); the spike's nested-agent smoke sets it. The day-1 spike **rewrites it**
+with the template it chose and the verdict mode it measured; the spike gate fails if the file and
+`docs/spike/spike-result.json` disagree. Core code reads only this constant. `verdictMode` is
+`value-only` when the chosen template is `store-only`, or when Kane's own assertion status disagreed
+with the stored value in any spike run; otherwise `status+value`.
 
 **Value matching** (`valuesMatch(a, b)`): normalize each (trim, collapse whitespace, lowercase,
 strip one pair of wrapping quotes); equal → match. Otherwise, if each contains exactly one number
@@ -120,15 +144,19 @@ Evaluated in order, per probe:
 5. Transient Kane outcome — no `run_end`, or killed by the outer timer, or terminal mode (first
    stdout line not JSON), or exit 3 — the probe retries **once**; if still transient → **SKIP**
    `Kane error: <detail>` / `Kane timed out`.
-6. A `run_end` is present: judge on `run_end.status` and the stored value, never on the exit code
-   alone (exit 1 with `status: passed` is an upload failure, not a failed check). Let
-   `observed = final_state.observed` (string, trimmed; non-string → JSON string; missing → empty).
-   - `observed` empty → **SKIP** `Kane could not read the value` (flag `misphrased` when the
-     `run_end` blames the test: its raw JSON contains `automation_bug` or `config_issue`).
-   - `observed` matches `expected`: status `passed` → **PASS**; otherwise → **SKIP**
-     `Kane and the stored value disagree`.
-   - Bad signature known and `observed` matches it → **FAIL** (if status was `passed`, the reason
-     notes `Kane reported pass but stored <v>: false pass caught (#239)`).
+6. A `run_end` is present: judge on the stored value (and, in `status+value` mode, on
+   `run_end.status`), never on the exit code alone (exit 1 with `status: passed` is an upload
+   failure, not a failed check). Let `observed = final_state.observed` (string, trimmed; non-string
+   → JSON string; missing → empty).
+   - `observed` empty → **retried once** like a transient (the retry counts against the run cap);
+     still empty → **SKIP** `Kane could not read the value` (flag `misphrased` when the `run_end`
+     blames the test: its raw JSON contains `automation_bug` or `config_issue`). In the bracket
+     phase this is the "mis-phrased" abort.
+   - `observed` matches `expected`: in `status+value` mode, status `passed` → **PASS**, otherwise
+     **SKIP** `Kane and the stored value disagree`; in `value-only` mode → **PASS** whatever the
+     status.
+   - Bad signature known and `observed` matches it → **FAIL** (in `status+value` mode, if status
+     was `passed`, the reason notes `Kane reported pass but stored <v>: false pass caught (#239)`).
    - Bad signature not yet known (bracket of the bad ref) → **FAIL**; this run establishes the bad
      signature.
    - Otherwise → **SKIP** `observed <v>, differs from the bad ref's <bad>: not this bug`.
@@ -188,8 +216,9 @@ must classify **PASS** (else abort "the good ref does not pass the check: <reaso
 - Only after `confirmed` and without `--no-fix`. Create branch `firstbad/fix-<culprit short sha>`
   (suffix `-2`, `-3` … if taken) from the bad ref in the worktree.
 - **Agent route**: up to `FIRSTBAD_MAX_FIX_ATTEMPTS`. Each attempt writes the prompt to
-  `<session>/prompt-<n>.md`, sets `FIRSTBAD_PROMPT_FILE`, pipes the prompt on stdin, runs the agent
-  argv in the worktree with `CLAUDECODE` removed from env, kill timer `FIRSTBAD_AGENT_TIMEOUT_SEC`.
+  `<session>/prompt-<n>.md`, sets `FIRSTBAD_PROMPT_FILE`, hands the prompt over by the profile's
+  `agentPromptRoute` (piped on stdin, or appended as the last argv entry), runs the agent argv in the
+  worktree with `CLAUDECODE` removed from env, kill timer `FIRSTBAD_AGENT_TIMEOUT_SEC`.
   No file change (`git status --porcelain` empty) → attempt fails ("agent made no change"). Otherwise
   probe the working tree (phase `fix`, label `fix attempt <n>`). PASS → verified. Not PASS → the
   entry's reason is added to the next prompt. Edits accumulate across attempts.
@@ -266,10 +295,10 @@ Terminal timeline line format (also used by the oracle relay):
   `Corner Shop Dev <dev@corner-shop.invalid>`, author = committer date
   `2026-11-02T09:00:00Z + 3 h × index`, LF files, `core.autocrlf=false`, `commit.gpgsign=false`,
   `--no-verify`. The same history (same SHAs) on every machine.
-- Demo check: url `http://127.0.0.1:<port>/`; do `Add the Tote bag to the cart. Add the Mug to the
-  cart. Type SAVE10 into the discount code field and click Apply.`; store `the order total amount
-  shown next to 'Total' (just the amount, for example $0.00)`; expected `$18.00`. Serve
-  `node server.js <port>`. No setup command.
+- Demo check (comma-chainable): url `http://127.0.0.1:<port>/`; do `add the Tote bag to the cart,
+  add the Mug to the cart, type SAVE10 into the discount code field and click Apply`; store `the
+  total amount shown next to the word Total`; expected `$18.00`. Serve `node server.js <port>`. No
+  setup command.
 
 ## 10. Safety
 
@@ -305,28 +334,37 @@ Terminal timeline line format (also used by the oracle relay):
 
 ## 12. LIVE tasks
 
-**Day-1 spike** (first live task): `scripts/spike/run-spike.mjs`, using the exact objective template
-above against a tiny local page (`http://127.0.0.1:4199/`, total `$18.00` or `$20.00`):
-1. Balance before (floor check); `kane-cli --version`; `kane-cli testmd --help` (free, recorded).
-2. Run A: full `run --name firstbad-spike` on `$18.00` → expect passed, observed `$18.00`.
-3. Run B: full `run` on `$20.00` → expect failed, observed `$20.00` (a real failing `run_end`).
-4. Run C: `testmd run <recording> --agent --headless --timeout 180` on `$20.00` → expect failed.
-5. Run D: the same replay on `$18.00` → expect passed.
-6. **Nested-agent smoke** (no credits): in a temp dir with `hello.txt` = `old`, spawn the planned
+**Day-1 spike** (first live task): `scripts/spike/run-spike.mjs` against a tiny local page
+(`http://127.0.0.1:4199/`, `Total: $18.00` or `Total: $20.00`), do `look at the order summary`,
+store `the total amount shown next to the word Total`, expected `$18.00`. The nested-agent smoke
+runs first because it costs no credits:
+1. **Nested-agent smoke** (no credits): in a temp dir with `hello.txt` = `old`, spawn the planned
    agent argv via `cross-spawn`, prompt on stdin, `CLAUDECODE` removed; pass when `hello.txt` is
    exactly `new`. If that route fails, try the prompt as a trailing argument and record which route
    worked.
-7. Balance after; delta. Every run records exit code, **wall-clock seconds**, whether `stream_start`
-   was the first line, whitelisted `run_end` / `test_md_done` fields and `final_state.observed`.
-Outputs `docs/spike/spike-result.json` and `docs/spike/kane-spike.md`. Decisions recorded:
-`localRunEndWellFormed`, `replayFaithful` (C failed and D passed), `replayHasValues`,
-`nestedAgent.ok` + `route`. Gate `node scripts/spike/check-spike.mjs` prints `PASS` only when run A's
-`run_end` is well-formed, the nested agent worked by some route, and no token pattern appears; it
-prints `FLAG:` lines for anything the orchestrator must surface (a failed stdin route, replay
-unfaithful).
+2. Balance before (floor check); `kane-cli --version`; `kane-cli testmd --help` (free, recorded).
+3. **Template selection** on the `$18.00` page: try the candidates in order (`commas-assert`,
+   `sentences-assert`, `store-only`), each a full `run --name firstbad-spike-<id>`; the first whose
+   `run_end` is well-formed and whose `final_state.observed` matches `$18.00` is chosen.
+4. Chosen template on the `$20.00` page: full `run` → expect observed `$20.00` (and, for an assert
+   template, status failed).
+5. Replay the chosen recording with `testmd run <recording> --agent --headless --timeout 300` on
+   the `$20.00` page (expect failed) and on the `$18.00` page (expect passed).
+6. Balance after; delta. Every run records exit code, **wall-clock seconds**, whether
+   `stream_start` was the first line, whitelisted `run_end` / `test_md_done` fields and
+   `final_state.observed`.
+Outputs `docs/spike/spike-result.json`, `docs/spike/kane-spike.md`, and the rewritten
+`src/kane-profile.ts`. Decisions recorded: `chosenTemplate`, `verdictMode` (`value-only` when the
+chosen template is `store-only` or any Kane status disagreed with its stored value),
+`localRunEndWellFormed`, `replayFaithful`, `replayHasValues`, `nestedAgent.ok` + `route`. At most
+`FIRSTBAD_SPIKE_MAX_RUNS` (8) credit-consuming runs. Gate `node scripts/spike/check-spike.mjs`
+prints `PASS` only when a template was chosen with a well-formed local `run_end`, the nested agent
+worked by some route, `src/kane-profile.ts` matches the result, and no token pattern appears; it
+prints `FLAG:` lines for anything the orchestrator must surface (stdin route failed, replay
+unfaithful, `value-only` mode).
 
 **Live demo hunt** (last must-have): `scripts/live-demo.mjs` runs `node dist/cli.js demo` with
-`FIRSTBAD_MAX_RUNS=24` (unless set), real kane-cli and the default Claude Code agent, in a temp dir;
+`FIRSTBAD_MAX_RUNS=24` and `FIRSTBAD_KANE_TIMEOUT_SEC=300` (unless set), real kane-cli and the default Claude Code agent, in a temp dir;
 tees a scrubbed transcript and copies the report into `docs/demo/recorded-run/` (`report.md`,
 `report.json`, `transcript.txt`). Gate `node scripts/check-recorded-run.mjs` → `PASS` when the hunt
 is `confirmed` on `refactor(cart): extract price helpers`, the fix is `verified`, the timeline has a
@@ -342,7 +380,10 @@ SKIP, Kane runs ≤ 24, and no token/evidence pattern appears.
   `replayFaithful` and `replayHasValues` are both true in the spike result), the `--objective`
   escape hatch.
 - The demo-fixture branch (shop files → history generator → demo skeleton with the shop stub)
-  depends only on the scaffold and runs alongside the core chain. The LIVE demo hunt depends on
+  depends only on the scaffold and runs alongside the core chain. The LIVE spike also depends only
+  on the scaffold: it is the first task dispatched after it, and the core chain proceeds while it
+  runs (core tests pass explicit template/mode values and never read the profile). The LIVE demo
+  hunt depends on the spike. The LIVE demo hunt depends on
   every must-have task (and the droppable one unless it is cut).
 
 ## 14. Known limits (go into the README)
@@ -377,9 +418,19 @@ SKIP, Kane runs ≤ 24, and no token/evidence pattern appears.
 9. Kane cwd = temp session dir (evidence never in the repo); the agent env drops `CLAUDECODE` so a
    nested `claude -p` runs from inside Claude Code → architect, derived from the pack and the
    nested-agent requirement.
+10. Objective wording → cookbook style (comma-chained, plain-English stored-value reference, never
+    `{{…}}`), an ordered candidate list, the spike picks one and writes `src/kane-profile.ts`; the
+    last candidate is store-only with firstbad comparing the value; `verdictMode` honored by
+    `classify()` → user, after the 2026-11-25 example.com probe (result_code 750, store clause
+    dropped).
+11. Empty observed value retried once (counts against the cap) before SKIP / mis-phrased abort;
+    Kane timeout default 300 s; spike cap 8 → user, same probe (one trivial 4-step run ≈ 160 s wall
+    clock; balance fell 26.35 while `credits_consumed` said 15.2).
 
 ## 16. Resolved by the spike (not guessed in the core plan)
 
+- Which objective template Kane actually follows (store, then judge), and whether its own
+  assertion status can be trusted (`verdictMode`).
 - Whether a local `http://` run returns a well-formed `run_end` (blocking if not).
 - The exact `testmd` replay syntax and whether its output carries stored values (decides the
   replay stretch task).
