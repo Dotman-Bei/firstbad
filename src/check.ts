@@ -15,7 +15,7 @@ function capitalize(s: string): string {
   return s.length === 0 ? s : s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-// Spec section 3. Must stay identical to compose() in scripts/spike/run-spike.mjs.
+// Spec section 3. scripts/spike/run-spike.mjs imports this from dist/check.js, so the spike sends exactly these objectives.
 export function composeObjective(c: Check, template: TemplateId): string {
   const url = c.url.trim();
   const d = clean(c.do);
@@ -27,7 +27,7 @@ export function composeObjective(c: Check, template: TemplateId): string {
     case 'sentences-assert':
       return `Go to ${url}. ${capitalize(d)}. Store ${st} as 'observed'. Then assert that the stored observed value is "${ex}".`;
     case 'store-only':
-      return `Go to ${url}, ${d}, then store ${st} as 'observed'`;
+      return `Go to ${url}, ${d}, then store ${st} in a variable named 'observed'`;
     default: {
       const unknown: never = template;
       throw new Error(`unknown template ${String(unknown)}`);

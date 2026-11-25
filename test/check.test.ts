@@ -17,7 +17,7 @@ describe('composeObjective', () => {
       "Go to http://127.0.0.1:4173/. Add the Tote bag to the cart, add the Mug to the cart, type SAVE10 into the discount code field and click Apply. Store the total amount shown next to the word Total as 'observed'. Then assert that the stored observed value is \"$18.00\".",
     );
     expect(composeObjective(CHECK, 'store-only')).toBe(
-      "Go to http://127.0.0.1:4173/, add the Tote bag to the cart, add the Mug to the cart, type SAVE10 into the discount code field and click Apply, then store the total amount shown next to the word Total as 'observed'",
+      "Go to http://127.0.0.1:4173/, add the Tote bag to the cart, add the Mug to the cart, type SAVE10 into the discount code field and click Apply, then store the total amount shown next to the word Total in a variable named 'observed'",
     );
     for (const t of ['commas-assert', 'sentences-assert', 'store-only'] as const) {
       expect(composeObjective(CHECK, t)).not.toContain('{{');

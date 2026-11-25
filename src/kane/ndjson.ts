@@ -43,17 +43,25 @@ function num(value: unknown): number | null {
   return null;
 }
 
-// The stored value lives under final_state.observed; a final_state with exactly one key is accepted too.
-export function observedOf(finalState: unknown): string {
-  if (typeof finalState !== 'object' || finalState === null || Array.isArray(finalState)) return '';
+// Which final_state key holds the stored value (spec section 4): 'observed' when present; otherwise the only
+// key other than 'url'; two or more candidate keys give an empty value (retried once), never a guess between keys.
+export interface ObservedValue {
+  key: string | null;
+  value: string;
+}
+
+export function observedFrom(finalState: unknown): ObservedValue {
+  if (typeof finalState !== 'object' || finalState === null || Array.isArray(finalState)) return { key: null, value: '' };
   const record = finalState as Record<string, unknown>;
-  if ('observed' in record) return text(record.observed).trim();
-  const keys = Object.keys(record);
-  if (keys.length === 1) {
-    const only = keys[0];
-    return only === undefined ? '' : text(record[only]).trim();
-  }
-  return '';
+  if ('observed' in record) return { key: 'observed', value: text(record.observed).trim() };
+  const candidates = Object.keys(record).filter((k) => k !== 'url');
+  const only = candidates.length === 1 ? candidates[0] : undefined;
+  if (only === undefined) return { key: null, value: '' };
+  return { key: only, value: text(record[only]).trim() };
+}
+
+export function observedOf(finalState: unknown): string {
+  return observedFrom(finalState).value;
 }
 
 function toRunEnd(o: Record<string, unknown>, line: string): KaneRunEnd {
