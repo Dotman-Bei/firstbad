@@ -8,10 +8,10 @@
   ],
   "notes": {
     "priority": "must-have tasks are never cut; droppable tasks (core:9) may be cut if the build is behind, and nothing depends on them; stretch tasks (ship:16) run only after the LIVE demo hunt (ship:15) is green.",
-    "live": "live: true marks the three tasks that spend Kane credits (core:2 day-1 spike, core:2.1 spike re-run, ship:15 demo hunt). Their gates are offline; the credit-spending step runs once, in the background (the orchestrator runs that one command itself). Dispatch core:2 first after core:1, and core:2.1 as soon as core:2 is done; dispatch ship:15 only after every must-have task and core:9 (unless cut) is done.",
+    "live": "live: true marks the three tasks that spend Kane credits (core:2 day-1 spike, core:2.1 spike re-run attempt 2, ship:15 demo hunt). Their gates are offline; the credit-spending step runs once, in the background (the orchestrator runs that one command itself). Dispatch core:2 first after core:1, and core:2.1 as soon as core:2 and core:3.1 are done (core:3.1 is not live: stub-only gate); core:2.1 runs `npm run build` (Step 5) right before its LIVE step `node scripts/spike/run-spike.mjs` (Step 6). Dispatch ship:15 only after every must-have task and core:9 (unless cut) is done.",
     "human_gate": "No task deploys, moves funds or handles a key or secret: Kane OAuth tokens stay inside kane-cli and the agent uses the local Claude Code login. The public-repo flip, the YouTube upload and the submission are Step-3 campaign gates, outside this manifest.",
     "pending": "No replay re-verification stretch task is authored: the day-1 spike (core:2) recorded replayFaithful=false and replayHasValues=false in docs/spike/spike-result.json (spec section 12), so re-verification stays on full Kane runs.",
-    "spike_rerun": "core:2 chose commas-assert, which lost the stored value on the $20.00 page (run fail-page-commas-assert: status failed, result_code 710, final_state {}). core:2.1 re-runs the spike under the rule that a template must store the value on both pages: it carries the day-1 evidence forward, eliminates commas-assert and sentences-assert without new runs, runs store-only on both pages (2 runs) and writes store-only / value-only to src/kane-profile.ts only if both values were stored. If not, core:2.1 reports BLOCKED with the raw run_end fields and the user decides (spec sections 3 and 12; plan docs/superpowers/plans/2026-11-25-firstbad-core.md Task 2.1)."
+    "spike_rerun": "core:2 chose commas-assert, which lost the stored value on the $20.00 page (run fail-page-commas-assert: status failed, result_code 710, final_state {}). The first core:2.1 attempt (2026-11-25T16:58Z, output never committed) ran store-only with the old wording on the $18.00 page: status passed, result_code 100, but Kane stored the value under its own key (final_state keys url, total), the old parser found no value and it stopped (balance 11110.4166 -> 11091.7249). By the user's decision (spec section 15, decision 13), core:3.1 (not live) changes the parser (final_state.observed, else the one key other than url, else empty; never a guess between keys) and the store-only wording (\"in a variable named 'observed'\"), with unit tests for the three parser cases. core:2.1, rewritten as attempt 2, depends on core:3.1: it imports the objective and the parser from dist/, carries the day-1 runs (git show af63046) and attempt 1 (docs/spike/rerun-1-stop.json), runs store-only on the $18.00 page then the $20.00 page with one retry per page on an empty value (its own cap of 4 Kane runs), records observedKey per run, and writes store-only / value-only to src/kane-profile.ts only if both pages return their own value. Otherwise it reports BLOCKED with the raw run_end fields and final_state keys and the user decides (spec sections 3, 4 and 12; plan docs/superpowers/plans/2026-11-25-firstbad-core.md Tasks 2.1 and 3.1)."
   },
   "tasks": [
     {
@@ -103,15 +103,19 @@
     {
       "id": "core:2.1",
       "subsystem": "core",
-      "title": "LIVE spike re-run: store-only on both pages",
+      "title": "LIVE spike re-run (attempt 2): store-only on both pages, new wording and key parsing",
       "plan": "docs/superpowers/plans/2026-11-25-firstbad-core.md",
       "depends_on": [
-        "core:2"
+        "core:2",
+        "core:3.1",
+        "core:4"
       ],
       "effort": "medium",
       "model_tier": "top",
       "files": {
-        "create": [],
+        "create": [
+          "docs/spike/rerun-1-stop.json"
+        ],
         "modify": [
           "scripts/spike/run-spike.mjs",
           "scripts/spike/check-spike.mjs",
@@ -122,18 +126,24 @@
         "test": []
       },
       "provides": [
-        "docs/spike/spike-result.json spikeVersion 2 { templates[], runs[] (day-1 runs carried), decisions { chosenTemplate: 'store-only', verdictMode: 'value-only', agentPromptRoute, localRunEndWellFormed, replayFaithful, replayHasValues } }",
-        "src/kane-profile.ts rewritten by the re-run (template 'store-only', verdictMode 'value-only')"
+        "docs/spike/spike-result.json spikeVersion 2 attempt 2 { templates[], runs[] (day-1 and attempt-1 runs carried; attempt-2 runs with objective and runEnd.observedKey), observedKeys, decisions { chosenTemplate: 'store-only', verdictMode: 'value-only', agentPromptRoute, localRunEndWellFormed, replayFaithful, replayHasValues } }",
+        "src/kane-profile.ts rewritten by the re-run (template 'store-only', verdictMode 'value-only')",
+        "docs/spike/rerun-1-stop.json (attempt-1 evidence, whitelisted fields)"
       ],
       "requires": [
         "docs/spike/spike-result.json decisions { chosenTemplate, verdictMode, agentPromptRoute, localRunEndWellFormed, replayFaithful, replayHasValues }",
-        "src/kane-profile.ts rewritten with the spike's choices"
+        "src/kane-profile.ts rewritten with the spike's choices",
+        "interface ObservedValue { key: string | null; value: string }",
+        "observedFrom(finalState: unknown): ObservedValue",
+        "composeObjective(c, 'store-only') returns \"Go to {url}, {do}, then store {store} in a variable named 'observed'\"",
+        "composeObjective(c: Check, template: TemplateId): string",
+        "valuesMatch(a: string, b: string): boolean"
       ],
       "gate": {
         "run": "node scripts/spike/check-spike.mjs",
         "expect": "PASS"
       },
-      "commit": "feat(spike): re-run picks store-only (value stored on both pages), value-only verdicts",
+      "commit": "feat(spike): re-run attempt 2 picks store-only (value returned on both pages), value-only verdicts",
       "human_gate": false,
       "allow_empty": false,
       "priority": "must-have",
@@ -194,6 +204,54 @@
         "expect": "Test Files  3 passed"
       },
       "commit": "feat(kane): scrubber, process helpers, NDJSON parser, Kane runner and stub kane-cli",
+      "human_gate": false,
+      "allow_empty": false,
+      "priority": "must-have",
+      "live": false,
+      "status": "pending"
+    },
+    {
+      "id": "core:3.1",
+      "subsystem": "core",
+      "title": "Observed-key parsing and the store-only wording",
+      "plan": "docs/superpowers/plans/2026-11-25-firstbad-core.md",
+      "depends_on": [
+        "core:3",
+        "core:4",
+        "core:5",
+        "core:6",
+        "demo:12"
+      ],
+      "effort": "medium",
+      "files": {
+        "create": [],
+        "modify": [
+          "src/kane/ndjson.ts",
+          "src/check.ts",
+          "test/check.test.ts"
+        ],
+        "test": [
+          "test/observed.test.ts"
+        ]
+      },
+      "provides": [
+        "interface ObservedValue { key: string | null; value: string }",
+        "observedFrom(finalState: unknown): ObservedValue",
+        "observedOf(finalState: unknown): string",
+        "composeObjective(c, 'store-only') returns \"Go to {url}, {do}, then store {store} in a variable named 'observed'\""
+      ],
+      "requires": [
+        "parseKaneStream(stdout: string): KaneStream",
+        "interface KaneRunResult { exitCode: number | null; killed: boolean; terminalMode: boolean; spawnError: string | null; stream: KaneStream; stderrTail: string; durationMs: number }",
+        "composeObjective(c: Check, template: TemplateId): string",
+        "classify(i: ClassifyInput): Classification",
+        "interface ClassifyInput { setup?: StepOutcome; ready?: StepOutcome; kane?: KaneRunResult; expected: string; badValue: string | null; mode: VerdictMode }"
+      ],
+      "gate": {
+        "run": "npx vitest run test/observed.test.ts test/ndjson.test.ts test/check.test.ts test/verdict.test.ts test/runner.test.ts test/probe.test.ts test/hunt.test.ts test/demo-config.test.ts",
+        "expect": "Test Files  8 passed"
+      },
+      "commit": "feat(kane): read the value from the one non-url final_state key; store-only asks for a variable named 'observed'",
       "human_gate": false,
       "allow_empty": false,
       "priority": "must-have",
@@ -888,6 +946,7 @@
         "core:2",
         "core:2.1",
         "core:3",
+        "core:3.1",
         "core:4",
         "core:5",
         "core:6",

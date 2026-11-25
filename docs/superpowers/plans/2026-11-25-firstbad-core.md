@@ -5,7 +5,7 @@
 **Tech Stack:** Node >= 20 (built on v22.23.4), npm 10, TypeScript 5.9.3, Vitest 3.2.7, @types/node 22.20.7, cross-spawn 7.0.6, @types/cross-spawn 6.0.6, git >= 2.40 (built on 2.54), kane-cli >= 0.10.9 (npm global), Claude Code CLI 2.1.229 (default agent).
 **Source spec:** docs/superpowers/specs/2026-11-25-firstbad-design.md
 
-Task ids are global across the three plans (core 1–9 plus 2.1, demo 10–13, ship 14–17). Task 2.1 is the spike re-run added after Task 2 chose a template that loses the value on the $20.00 page. Every task carries a `**Priority:**` line (`must-have` / `droppable` / `stretch`); the manifest copies it.
+Task ids are global across the three plans (core 1–9 plus 2.1 and 3.1, demo 10–13, ship 14–17). Task 2.1 is the spike re-run added after Task 2 chose a template that loses the value on the $20.00 page. Its first attempt stopped because Kane stored the value under its own key (`total`), so Task 3.1 (observed-key parsing and the store-only wording, no live calls) was added, and Task 2.1 was rewritten as attempt 2, which depends on it. Every task carries a `**Priority:**` line (`must-have` / `droppable` / `stretch`); the manifest copies it.
 
 Standing rules for every task in this plan (the orchestrator also pastes `conventions.md`):
 - ESM everywhere. Relative imports in `src/` end in `.js` (for example `import { scrub } from './scrub.js';`); tests import `../src/<file>.js` and Vitest resolves the `.ts` source.
@@ -895,34 +895,34 @@ Message: `feat(spike): LIVE day-1 Kane spike picks the objective template and ve
 
 ---
 
-### Task 2.1: LIVE spike re-run: store-only on both pages
+### Task 2.1: LIVE spike re-run (attempt 2): store-only on both pages, new wording and key parsing
 
 **Files:**
+- Create: `docs/spike/rerun-1-stop.json`
 - Modify: `scripts/spike/run-spike.mjs`
 - Modify: `scripts/spike/check-spike.mjs`
 - Modify: `docs/spike/spike-result.json`
 - Modify: `docs/spike/kane-spike.md`
 - Modify: `src/kane-profile.ts`
 
-**Depends on:** Task 2
+**Depends on:** Task 2, Task 3.1, Task 4
 **Effort:** medium
 **Model tier:** top
 **Priority:** must-have
-**Provides:** `docs/spike/spike-result.json spikeVersion 2 { templates[], runs[] (day-1 runs carried), decisions { chosenTemplate: 'store-only', verdictMode: 'value-only', agentPromptRoute, localRunEndWellFormed, replayFaithful, replayHasValues } }`, `src/kane-profile.ts rewritten by the re-run (template 'store-only', verdictMode 'value-only')`
-**Requires:** `docs/spike/spike-result.json decisions { chosenTemplate, verdictMode, agentPromptRoute, localRunEndWellFormed, replayFaithful, replayHasValues }`, `src/kane-profile.ts rewritten with the spike's choices`
+**Provides:** `docs/spike/spike-result.json spikeVersion 2 attempt 2 { templates[], runs[] (day-1 and attempt-1 runs carried; attempt-2 runs with objective and runEnd.observedKey), observedKeys, decisions { chosenTemplate: 'store-only', verdictMode: 'value-only', agentPromptRoute, localRunEndWellFormed, replayFaithful, replayHasValues } }`, `src/kane-profile.ts rewritten by the re-run (template 'store-only', verdictMode 'value-only')`, `docs/spike/rerun-1-stop.json (attempt-1 evidence, whitelisted fields)`
+**Requires:** `docs/spike/spike-result.json decisions { chosenTemplate, verdictMode, agentPromptRoute, localRunEndWellFormed, replayFaithful, replayHasValues }`, `src/kane-profile.ts rewritten with the spike's choices`, `interface ObservedValue { key: string | null; value: string }`, `observedFrom(finalState: unknown): ObservedValue`, `composeObjective(c, 'store-only') returns "Go to {url}, {do}, then store {store} in a variable named 'observed'"`, `composeObjective(c: Check, template: TemplateId): string`, `valuesMatch(a: string, b: string): boolean`
 
-This is a LIVE task: Step 4 spends real Kane credits (exactly 2 runs, roughly 17–22 credits and 2–3 minutes each). It replaces Task 2's template choice, which was wrong. Task 2 chose `commas-assert` because it stored `$18.00` on the `$18.00` page, but on the `$20.00` page Kane's assertion failed and the run kept no value, so firstbad's bracket of the bad ref (spec section 4) would get an empty value and abort with "your check looks mis-phrased". The new rule (the user's decision, 2026-11-25): **a template is accepted only if it stores the value on both the `$18.00` page and the `$20.00` page.**
+This is a LIVE task: Step 6 spends real Kane credits (2 to 4 runs, roughly 17–22 credits and 2–3 minutes each). It replaces Task 2's template choice (`commas-assert`), which lost the value on the `$20.00` page. Rule (the user's decision, 2026-11-25): **a template is accepted only if it returns the value on both the `$18.00` page and the `$20.00` page.**
 
-The day-1 evidence Task 2 committed in `docs/spike/spike-result.json` (`"spikeVersion": 1`) is reused, not re-bought:
-- run `select-commas-assert` (`$18.00` page): `run_end` status `passed`, result_code `100`, final_state keys `url, observed`, observed `$18.00`.
-- run `fail-page-commas-assert` (`$20.00` page): exit 1, `run_end` status `failed`, result_code `710`, final_state `{}` (no keys), observed empty. Kane's summary: "the agent's read step did not store that amount in {{observed}}".
-- runs `replay-fail-page` and `replay-pass-page` (`testmd run`): both `passed`, no values, so `replayFaithful: false`, `replayHasValues: false` (the replay stretch task stays unauthored).
-- `nestedAgent`: `{ ok: true, route: 'stdin' }` (costs no credits, but it is carried forward, not re-run).
-- `decisions`: `{ chosenTemplate: 'commas-assert', verdictMode: 'status+value', agentPromptRoute: 'stdin', localRunEndWellFormed: true, replayFaithful: false, replayHasValues: false }`.
+**History, carried as evidence and never re-bought:**
+- Day 1 (Task 2, commit `af63046`, `docs/spike/spike-result.json` `"spikeVersion": 1`): `select-commas-assert` stored `$18.00` (final_state keys `url, observed`); `fail-page-commas-assert` failed with result_code `710` and `final_state {}`; both `testmd` replays passed with no values (`replayFaithful: false`, `replayHasValues: false`); nested agent ok via `stdin`. So `commas-assert` is eliminated by its recorded `$20.00` run and `sentences-assert` by the same cause, without runs.
+- Re-run attempt 1 (the first version of this task, 2026-11-25T16:58Z, never committed): `select-store-only` on the `$18.00` page with the old wording `... then store the total amount shown next to the word Total as 'observed'`: exit 0, `run_end` status `passed`, reason "Objective completed", result_code `100`, final_state keys `url, total`, parsed value empty (the old parser read only `observed` or a one-key `final_state`). Kane's summary: "Read the amount shown next to “Total”: $18.00." It stopped there by design (the `$20.00` page was not run). Balance 11110.4166 → 11091.7249 (delta 18.6917).
 
-So `commas-assert` is eliminated by its recorded `$20.00` run, and `sentences-assert` (also assertion-bearing: a failed assertion fails the page and loses the value) is eliminated without a run. The new `run-spike.mjs` checks that evidence and then runs only `store-only`: first on the `$18.00` page, then on the `$20.00` page, with the same argv firstbad's probe uses (`run <objective> --agent --headless --timeout 300 --max-steps 25`). If both runs store their value (`$18.00`, then `$20.00`), it chooses `store-only` with verdictMode `value-only` (firstbad compares the value itself; Kane's status is only an error signal) and rewrites `src/kane-profile.ts`. If either run does not store its value, it **stops** (it does not run the `$20.00` page after an `$18.00` failure), prints the raw `run_end` fields (status, reason, result_code, final_state keys), records them in `docs/spike/spike-result.json` and `docs/spike/kane-spike.md`, leaves `src/kane-profile.ts` unchanged and exits 1. Credit guard: it refuses to spend (exit 3) when `kane-cli balance` cannot be read or is below `FIRSTBAD_MIN_BALANCE` (default 500; it was about 11,110 after day 1), or when `FIRSTBAD_SPIKE_MAX_RUNS` (default 8) minus the 4 recorded day-1 runs leaves fewer than 2 runs; it measures the balance before and after and prints both. It refuses (exit 4) when `docs/spike/spike-result.json` is not the day-1 evidence (`spikeVersion` 1 with the `fail-page-commas-assert` record and a passing nested-agent smoke), which also stops an accidental second re-run.
+Task 3.1 (done before this task) fixed both causes: firstbad now reads `final_state.observed`, else the one key other than `url` (two or more candidate keys give an empty value, never a guess), and the store-only objective now reads `Go to {url}, {do}, then store {store} in a variable named 'observed'`. The upstream signatures this task uses, pasted: `interface ObservedValue { key: string | null; value: string }` and `observedFrom(finalState: unknown): ObservedValue` (Task 3.1, `dist/kane/ndjson.js`); `composeObjective(c: Check, template: TemplateId): string` and `valuesMatch(a: string, b: string): boolean` (Task 4, `dist/check.js`; Task 3.1 changed only the store-only wording). The re-run script **imports these three from `dist/`** instead of keeping copies, so the spike sends exactly firstbad's objective and parses `final_state` with exactly firstbad's rule. That is why `npm run build` (Step 5) must run right before the LIVE step; the script also refuses (exit 4, no credits) when `dist/` is missing or still composes the old wording.
 
-The current `src/kane-profile.ts` (written by Task 2) ends with:
+**What the re-run does** (`scripts/spike/run-spike.mjs`, Step 2): refuses with exit 4 (no credits) when `docs/spike/spike-result.json` is already attempt 2 (it accepts the day-1 file and the attempt-1 STOP file), when `dist/` is missing or stale, when the day-1 evidence cannot be read with `git show af63046:docs/spike/spike-result.json`, or when `docs/spike/rerun-1-stop.json` is missing. It refuses with exit 3 (no credits) when `kane-cli balance` cannot be read or is below `FIRSTBAD_MIN_BALANCE` (default 500; about 11,091 now). Budget: **its own cap of 4 credit-consuming runs** (`FIRSTBAD_SPIKE_RERUN_MAX_RUNS`, default 4, values above 4 are clamped to 4, below 2 refuse with exit 3), independent of the day-1 count; `FIRSTBAD_SPIKE_MAX_RUNS` is not read by the re-run. It runs store-only on the `$18.00` page, then on the `$20.00` page, with the probe's argv (`run <objective> --agent --headless --timeout 300 --max-steps 25`). A page whose run returns an empty value (no `run_end`, or no usable `final_state` key) is retried **once**; a non-empty wrong value is not retried. It records for every run the objective, the whitelisted `run_end` fields, the `final_state` key names and `observedKey` (which key the value came from, or `null`), and per page in `observedKeys`. Both pages return their own value (`$18.00`, then `$20.00`) → it chooses `store-only` with verdictMode `value-only` and rewrites `src/kane-profile.ts`, exit 0. Otherwise it **stops** (the `$20.00` page is not run after an `$18.00` failure), prints and records the raw `run_end` fields (status, reason, result_code, final_state keys, observedKey, observed), leaves `src/kane-profile.ts` unchanged and exits 1. It prints the balance before and after either way. It writes `docs/spike/spike-result.json` (`spikeVersion` 2, `attempt` 2, every day-1 run, the attempt-1 run and the attempt-2 runs) and `docs/spike/kane-spike.md`.
+
+**Working-tree state you will find (main checkout) and what you overwrite:** `scripts/spike/run-spike.mjs` and `scripts/spike/check-spike.mjs` may hold uncommitted copies of this task's first version; replace both whole files (Steps 2 and 3). `docs/spike/spike-result.json` and `docs/spike/kane-spike.md` may hold attempt 1's uncommitted STOP output (`spikeVersion` 2 with no `attempt` field); leave them as they are: do not restore, delete or hand-edit them; Step 6 overwrites both, and the script's second-run guard accepts that file (it refuses only `attempt` 2 or later). `src/kane-profile.ts` still holds Task 2's profile:
 
 ```ts
 export const KANE_PROFILE: KaneProfile = {
@@ -933,41 +933,102 @@ export const KANE_PROFILE: KaneProfile = {
 };
 ```
 
-Step 4 rewrites the whole file in the same format (only on success); never hand-edit it, `docs/spike/spike-result.json` or `docs/spike/kane-spike.md`. Core code reads only `KANE_PROFILE`; `prepareSession` (Task 6) already forces `value-only` for `store-only`, `classify()` (Task 4) already supports `value-only`, and the stub-Kane tests are template-independent, so no `src/` file other than the profile changes.
+Only Step 6 rewrites it (whole file, same format, only on success). Never hand-edit `src/kane-profile.ts`, `docs/spike/spike-result.json` or `docs/spike/kane-spike.md`. Core code reads only `KANE_PROFILE`; `prepareSession` (Task 6) already forces `value-only` for `store-only`, `classify()` (Task 4) supports `value-only`, and the stub-Kane suites pass under either profile, so no other `src/` file changes.
 
-- [ ] **Step 1: Replace `scripts/spike/run-spike.mjs` with the re-run script (whole file)**
+- [ ] **Step 1: Create `docs/spike/rerun-1-stop.json` with exactly this content (attempt 1's evidence, whitelisted fields only)**
+
+```json
+{
+  "attempt": 1,
+  "ranAt": "2026-11-25T16:58:33.771Z",
+  "platform": "win32 x64",
+  "node": "v22.23.4",
+  "kaneVersion": "0.10.9",
+  "objective": "Go to http://127.0.0.1:4199/, look at the order summary, then store the total amount shown next to the word Total as 'observed'",
+  "parser": "old rule: final_state.observed, else a final_state with exactly one key; final_state had the keys url and total, so the parsed value was empty (the value of total was not recorded)",
+  "balance": {
+    "before": 11110.4166,
+    "after": 11091.7249,
+    "delta": 18.6917
+  },
+  "creditsConsumedSum": 16.68,
+  "stop": "STOP: store-only did not store $18.00 on the $18.00 page (select-store-only): run_end status=passed, reason=\"Objective completed\", result_code=100, final_state keys=[url, total], observed=\"\"",
+  "runs": [
+    {
+      "id": "select-store-only",
+      "kind": "run",
+      "template": "store-only",
+      "page": "$18.00",
+      "objective": "Go to http://127.0.0.1:4199/, look at the order summary, then store the total amount shown next to the word Total as 'observed'",
+      "exitCode": 0,
+      "timedOut": false,
+      "spawnError": null,
+      "wallSec": 124.5,
+      "lines": 14,
+      "firstLineIsJson": true,
+      "streamStart": true,
+      "runEnd": {
+        "status": "passed",
+        "summary": "Reviewed the order summary as requested.\nRead the amount shown next to “Total”: $18.00.",
+        "oneLiner": "reviewed the order summary on the checkout page",
+        "reason": "Objective completed",
+        "resultCode": "100",
+        "creditsConsumed": 16.676782499999998,
+        "durationSec": 83,
+        "finalStateKeys": [
+          "url",
+          "total"
+        ],
+        "observed": "",
+        "observedKey": null,
+        "blamesTest": false
+      },
+      "testMdDone": null,
+      "errors": []
+    }
+  ]
+}
+```
+
+- [ ] **Step 2: Replace `scripts/spike/run-spike.mjs` with the re-run script (whole file)**
 
 ```js
 #!/usr/bin/env node
-// LIVE: spends Kane credits. The firstbad spike re-run (spec section 12): store-only on both pages.
-// Reads the day-1 evidence (docs/spike/spike-result.json, spikeVersion 1) and carries its runs forward,
-// runs store-only on the $18.00 page and then the $20.00 page, and writes docs/spike/spike-result.json
-// (spikeVersion 2) and docs/spike/kane-spike.md. It rewrites src/kane-profile.ts only when store-only
-// stored the value on both pages. Run it once.
+// LIVE: spends Kane credits. The firstbad spike re-run, attempt 2 (spec section 12): store-only on both pages.
+// Carries forward the day-1 evidence (git show af63046:docs/spike/spike-result.json) and the first re-run
+// attempt (docs/spike/rerun-1-stop.json), runs store-only on the $18.00 page and then the $20.00 page (one
+// retry per page on an empty value, at most 4 Kane runs), and writes docs/spike/spike-result.json
+// (spikeVersion 2, attempt 2) and docs/spike/kane-spike.md. The objective, the value matching and the
+// final_state parsing are firstbad's own, imported from dist/ (run npm run build first). It rewrites
+// src/kane-profile.ts only when store-only returned the value on both pages. Run it once.
 import fs from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import spawn from 'cross-spawn';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const RESULT_JSON = path.join(ROOT, 'docs', 'spike', 'spike-result.json');
 const RESULT_MD = path.join(ROOT, 'docs', 'spike', 'kane-spike.md');
+const CARRIED_JSON = path.join(ROOT, 'docs', 'spike', 'rerun-1-stop.json');
 const PROFILE_TS = path.join(ROOT, 'src', 'kane-profile.ts');
+const DIST_CHECK = path.join(ROOT, 'dist', 'check.js');
+const DIST_NDJSON = path.join(ROOT, 'dist', 'kane', 'ndjson.js');
 const PORT = 4199;
 const PAGE_URL = `http://127.0.0.1:${PORT}/`;
 const MIN_BALANCE = numberEnv('FIRSTBAD_MIN_BALANCE', 500);
-const MAX_RUNS = numberEnv('FIRSTBAD_SPIKE_MAX_RUNS', 8);
+const RERUN_CAP = 4;
+const RERUN_MAX_RUNS = Math.min(numberEnv('FIRSTBAD_SPIKE_RERUN_MAX_RUNS', RERUN_CAP), RERUN_CAP);
 const TIMEOUT_SEC = numberEnv('FIRSTBAD_KANE_TIMEOUT_SEC', 300);
 const KANE = splitCommand(process.env.FIRSTBAD_KANE ?? 'kane-cli');
-const TEMPLATES = ['commas-assert', 'sentences-assert', 'store-only'];
 const ASSERT_TEMPLATES = ['commas-assert', 'sentences-assert'];
 const CANDIDATE = 'store-only';
 const PASS_PAGE = '$18.00';
 const FAIL_PAGE = '$20.00';
 const NEEDED_RUNS = 2;
+const ATTEMPT = 2;
 const DAY1_COMMIT = 'af63046';
 const CHECK = {
   url: PAGE_URL,
@@ -975,6 +1036,9 @@ const CHECK = {
   store: 'the total amount shown next to the word Total',
   expected: '$18.00',
 };
+// composeObjective(CHECK, 'store-only') from dist/check.js must return exactly this (spec section 3).
+const EXPECTED_OBJECTIVE = "Go to http://127.0.0.1:4199/, look at the order summary, then store the total amount shown next to the word Total in a variable named 'observed'";
+const PARSER_RULE = "final_state.observed if present; else the one key other than url; two or more candidate keys give an empty value (retried once), never a guess";
 
 function numberEnv(name, fallback) {
   const raw = process.env[name];
@@ -1027,46 +1091,6 @@ function text(v) {
   if (v === undefined || v === null) return '';
   if (typeof v === 'object') return JSON.stringify(v);
   return String(v);
-}
-
-function clean(s) {
-  return s.trim().replace(/[.,\s]+$/u, '');
-}
-
-function capitalize(s) {
-  return s.length === 0 ? s : s.charAt(0).toUpperCase() + s.slice(1);
-}
-
-// Must stay identical to composeObjective() in src/check.ts (spec section 3).
-function compose(template, c) {
-  const url = c.url.trim();
-  const d = clean(c.do);
-  const st = clean(c.store);
-  const ex = c.expected.trim();
-  if (template === 'commas-assert') return `Go to ${url}, ${d}, store ${st} as 'observed', then assert the stored observed value is "${ex}"`;
-  if (template === 'sentences-assert') return `Go to ${url}. ${capitalize(d)}. Store ${st} as 'observed'. Then assert that the stored observed value is "${ex}".`;
-  return `Go to ${url}, ${d}, then store ${st} as 'observed'`;
-}
-
-function normalizeValue(v) {
-  let s = v.trim().replace(/\s+/g, ' ').toLowerCase();
-  if (s.length >= 2 && ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'")))) s = s.slice(1, -1).trim();
-  return s;
-}
-
-function numberTokens(s) {
-  const m = s.replace(/(\d),(?=\d{3}\b)/g, '$1').match(/-?\d+(?:\.\d+)?/g);
-  return m === null ? [] : m.map(Number);
-}
-
-function valuesMatch(a, b) {
-  const na = normalizeValue(a);
-  const nb = normalizeValue(b);
-  if (na === '' || nb === '') return false;
-  if (na === nb) return true;
-  const ta = numberTokens(na);
-  const tb = numberTokens(nb);
-  return ta.length === 1 && tb.length === 1 && ta[0] === tb[0];
 }
 
 function parseBalance(out) {
@@ -1134,7 +1158,8 @@ function runProcess(argv, { cwd, env, input, timeoutMs }) {
   });
 }
 
-function parseStream(stdout) {
+// observedFrom is firstbad's own final_state rule (src/kane/ndjson.ts), imported from dist/kane/ndjson.js.
+function parseStream(stdout, observedFrom) {
   const lines = stdout.split(/\r?\n/).filter((l) => l.trim() !== '');
   const out = { lines: lines.length, firstLineIsJson: false, streamStart: false, runEnd: null, testMdDone: null, errors: [] };
   lines.forEach((line, index) => {
@@ -1150,8 +1175,7 @@ function parseStream(stdout) {
       out.streamStart = true;
     } else if (o.type === 'run_end') {
       const finalState = o.final_state !== null && typeof o.final_state === 'object' && !Array.isArray(o.final_state) ? o.final_state : {};
-      const keys = Object.keys(finalState);
-      const rawObserved = 'observed' in finalState ? finalState.observed : keys.length === 1 ? finalState[keys[0]] : undefined;
+      const found = observedFrom(o.final_state);
       out.runEnd = {
         status: text(o.status),
         summary: scrub(text(o.summary)).slice(0, 500),
@@ -1160,8 +1184,9 @@ function parseStream(stdout) {
         resultCode: o.result_code === undefined || o.result_code === null ? null : text(o.result_code),
         creditsConsumed: typeof o.credits_consumed === 'number' ? o.credits_consumed : typeof o.credits === 'number' ? o.credits : null,
         durationSec: typeof o.duration === 'number' ? o.duration : null,
-        finalStateKeys: keys.slice(0, 10).map((k) => scrub(k)),
-        observed: scrub(text(rawObserved)).trim().slice(0, 200),
+        finalStateKeys: Object.keys(finalState).slice(0, 10).map((k) => scrub(k)),
+        observed: scrub(found.value).slice(0, 200),
+        observedKey: found.key === null ? null : scrub(found.key).slice(0, 100),
         blamesTest: /automation_bug|config_issue/.test(line),
       };
     } else if (o.type === 'test_md_done') {
@@ -1190,50 +1215,31 @@ function startPage() {
   });
 }
 
+// The key a run's value came from: the recorded observedKey, else the same rule applied to the recorded key names.
+function keyOf(run) {
+  const e = run.runEnd;
+  if (e === null || e === undefined) return null;
+  if (typeof e.observedKey === 'string') return e.observedKey;
+  const keys = Array.isArray(e.finalStateKeys) ? e.finalStateKeys : [];
+  if (keys.includes('observed')) return 'observed';
+  const others = keys.filter((k) => k !== 'url');
+  return others.length === 1 ? others[0] : null;
+}
+
 // The raw run_end fields the user asked to see when a run does not return the value.
 function rawFields(rec) {
   if (rec.runEnd === null) {
     return `no run_end (exit ${rec.exitCode ?? 'killed'}, timedOut ${rec.timedOut}, spawnError ${rec.spawnError ?? 'none'}, errors ${JSON.stringify(rec.errors)})`;
   }
   const e = rec.runEnd;
-  return `run_end status=${e.status || '(empty)'}, reason=${JSON.stringify(e.reason)}, result_code=${e.resultCode ?? 'null'}, final_state keys=[${e.finalStateKeys.join(', ')}], observed=${JSON.stringify(e.observed)}`;
-}
-
-function stored(rec, value) {
-  return rec !== null && rec !== undefined && rec.runEnd !== null && valuesMatch(rec.runEnd.observed, value);
+  return (
+    `run_end status=${e.status || '(empty)'}, reason=${JSON.stringify(e.reason)}, result_code=${e.resultCode ?? 'null'}, ` +
+    `final_state keys=[${e.finalStateKeys.join(', ')}], observedKey=${e.observedKey ?? 'none'}, observed=${JSON.stringify(e.observed)}`
+  );
 }
 
 function findRun(runs, template, page) {
   return runs.find((r) => r.kind === 'run' && r.template === template && r.page === page) ?? null;
-}
-
-// Template verdicts from the carried day-1 runs (no credits): an assertion-bearing template that lost the
-// value on the $20.00 page is eliminated, and so is any assertion-bearing template that shares that cause.
-function eliminateFromEvidence(day1Runs) {
-  const lost = ASSERT_TEMPLATES.map((t) => findRun(day1Runs, t, FAIL_PAGE)).find((rec) => rec !== null && !stored(rec, FAIL_PAGE)) ?? null;
-  if (lost === null) return null;
-  return ASSERT_TEMPLATES.map((id) => {
-    const pass = findRun(day1Runs, id, PASS_PAGE);
-    const fail = findRun(day1Runs, id, FAIL_PAGE);
-    if (fail !== null && !stored(fail, FAIL_PAGE)) {
-      return {
-        id,
-        status: 'eliminated',
-        reason:
-          `${pass !== null && stored(pass, PASS_PAGE) ? `stored ${PASS_PAGE} on the ${PASS_PAGE} page (${pass.id}), but ` : ''}` +
-          `on the ${FAIL_PAGE} page (${fail.id}) ${rawFields(fail)}: no stored value, so the bad ref's signature would be empty`,
-        evidence: [pass?.id, fail.id].filter((x) => typeof x === 'string'),
-        ran: true,
-      };
-    }
-    return {
-      id,
-      status: 'eliminated',
-      reason: `not run: an assertion-bearing template shares the cause recorded in ${lost.id} (a failed assertion fails the page and loses the stored value)`,
-      evidence: [lost.id],
-      ran: false,
-    };
-  });
 }
 
 function profileSource(p) {
@@ -1269,21 +1275,27 @@ function renderMarkdown(r) {
   const runRows = r.runs.map(
     (run) =>
       `| ${run.id} | ${run.phase} | ${run.kind} | ${run.template ?? '-'} | ${run.page} | ${run.exitCode ?? 'killed'} | ${run.wallSec} | ` +
-      `${run.testMdDone?.overallStatus || run.runEnd?.status || 'none'} | ${run.runEnd?.resultCode ?? '-'} | ${run.runEnd?.observed || '-'} | ` +
+      `${run.testMdDone?.overallStatus || run.runEnd?.status || 'none'} | ${run.runEnd?.resultCode ?? '-'} | ` +
+      `${run.runEnd ? `[${run.runEnd.finalStateKeys.join(', ')}]` : '-'} | ${keyOf(run) ?? '-'} | ${run.runEnd?.observed || '-'} | ` +
       `${run.runEnd?.creditsConsumed ?? '-'} |`,
   );
+  const key = (page) => (r.observedKeys[page] === null ? 'none' : `\`${r.observedKeys[page]}\``);
   return [
     '# Kane day-1 spike',
     '',
-    `- Re-run at: ${r.ranAt} on ${r.platform}, node ${r.node}, kane-cli ${r.kaneVersion ?? 'unknown'} (day-1 runs carried from ${r.day1.ranAt}, commit ${DAY1_COMMIT})`,
+    `- Re-run attempt ${r.attempt} at: ${r.ranAt} on ${r.platform}, node ${r.node}, kane-cli ${r.kaneVersion ?? 'unknown'} (day-1 runs carried from ${r.day1.ranAt}, commit ${DAY1_COMMIT}; attempt 1 carried from ${r.rerun1.ranAt})`,
     `- Selection rule: a template is accepted only if it stores the value on both the ${PASS_PAGE} page and the ${FAIL_PAGE} page`,
-    `- Chosen objective template: ${d.chosenTemplate === null ? `none (${CANDIDATE} did not store the value on both pages; see Flags)` : `\`${d.chosenTemplate}\` (verdict mode \`${d.verdictMode}\`)`}`,
+    `- Parser rule: ${r.parserRule}`,
+    `- store-only objective: \`${r.objective}\``,
+    `- Chosen objective template: ${d.chosenTemplate === null ? `none (${CANDIDATE} did not return the value on both pages; see Flags)` : `\`${d.chosenTemplate}\` (verdict mode \`${d.verdictMode}\`)`}`,
+    `- Stored key per page (attempt ${r.attempt}): ${PASS_PAGE} page ${key(PASS_PAGE)}, ${FAIL_PAGE} page ${key(FAIL_PAGE)}`,
     `- Local http:// run_end well-formed: ${yes(d.localRunEndWellFormed)}`,
     `- Replay faithful: ${yes(d.replayFaithful)}; replay carries stored values: ${yes(d.replayHasValues)} (carried from day 1; the replay stretch task is not authored)`,
     `- Nested agent (claude -p, CLAUDECODE removed): ${r.nestedAgent.ok ? `ok via ${r.nestedAgent.route}` : 'failed on every route'} (carried from day 1, not re-run)`,
-    `- Re-run balance: before ${r.balance.before ?? 'unknown'}, after ${r.balance.after ?? 'unknown'}, delta ${r.balance.delta ?? 'unknown'} (sum of credits_consumed ${r.creditsConsumedSum})`,
+    `- Re-run attempt ${r.attempt} balance: before ${r.balance.before ?? 'unknown'}, after ${r.balance.after ?? 'unknown'}, delta ${r.balance.delta ?? 'unknown'} (sum of credits_consumed ${r.creditsConsumedSum}; ${r.kaneRuns} Kane runs, cap ${r.limits.rerunMaxRuns})`,
+    `- Re-run attempt 1: ${r.rerun1.stop}; balance before ${r.rerun1.balance?.before ?? 'unknown'}, after ${r.rerun1.balance?.after ?? 'unknown'}, delta ${r.rerun1.balance?.delta ?? 'unknown'}`,
     `- Day-1 balance: before ${r.day1.balance?.before ?? 'unknown'}, after ${r.day1.balance?.after ?? 'unknown'}, delta ${r.day1.balance?.delta ?? 'unknown'}`,
-    `- Mean wall-clock seconds per re-run Kane run: ${r.meanWallSec ?? 'n/a'}`,
+    `- Mean wall-clock seconds per attempt-${r.attempt} Kane run: ${r.meanWallSec ?? 'n/a'}`,
     '',
     '## Templates',
     '',
@@ -1293,8 +1305,8 @@ function renderMarkdown(r) {
     '',
     '## Runs',
     '',
-    '| Run | Phase | Kind | Template | Page | Exit | Wall s | Status | result_code | Observed | credits_consumed |',
-    '|---|---|---|---|---|---|---|---|---|---|---|',
+    '| Run | Phase | Kind | Template | Page | Exit | Wall s | Status | result_code | final_state keys | Stored key | Observed | credits_consumed |',
+    '|---|---|---|---|---|---|---|---|---|---|---|---|---|',
     ...runRows,
     '',
     '## Flags',
@@ -1304,39 +1316,114 @@ function renderMarkdown(r) {
   ].join('\n');
 }
 
-async function main() {
-  if (!fs.existsSync(RESULT_JSON)) {
-    console.error('spike: docs/spike/spike-result.json (the day-1 evidence) is missing; not spending credits');
-    return 4;
-  }
-  let day1;
+async function loadShared() {
   try {
-    day1 = JSON.parse(fs.readFileSync(RESULT_JSON, 'utf8'));
+    const check = await import(pathToFileURL(DIST_CHECK).href);
+    const ndjson = await import(pathToFileURL(DIST_NDJSON).href);
+    if (typeof check.composeObjective !== 'function' || typeof check.valuesMatch !== 'function' || typeof ndjson.observedFrom !== 'function') return null;
+    return { composeObjective: check.composeObjective, valuesMatch: check.valuesMatch, observedFrom: ndjson.observedFrom };
   } catch {
-    console.error('spike: docs/spike/spike-result.json is not valid JSON; not spending credits');
+    return null;
+  }
+}
+
+function readDay1() {
+  const r = spawnSync('git', ['show', `${DAY1_COMMIT}:docs/spike/spike-result.json`], {
+    cwd: ROOT,
+    encoding: 'utf8',
+    windowsHide: true,
+    maxBuffer: 16 * 1024 * 1024,
+  });
+  if (r.status !== 0) return null;
+  try {
+    return JSON.parse(r.stdout);
+  } catch {
+    return null;
+  }
+}
+
+async function main() {
+  if (fs.existsSync(RESULT_JSON)) {
+    let current = null;
+    try {
+      current = JSON.parse(fs.readFileSync(RESULT_JSON, 'utf8'));
+    } catch {
+      console.error('spike: docs/spike/spike-result.json is not valid JSON; restore it from HEAD first; not spending credits');
+      return 4;
+    }
+    if (current.spikeVersion === 2 && typeof current.attempt === 'number' && current.attempt >= ATTEMPT) {
+      console.error(
+        `spike: docs/spike/spike-result.json is already re-run attempt ${current.attempt}; another re-run needs the user's say-so and ` +
+          'docs/spike/spike-result.json restored from HEAD first; not spending credits',
+      );
+      return 4;
+    }
+  }
+  const shared = await loadShared();
+  if (shared === null) {
+    console.error('spike: dist/check.js or dist/kane/ndjson.js is missing or lacks composeObjective, valuesMatch or observedFrom; run npm run build first; not spending credits');
     return 4;
   }
-  if (day1.spikeVersion !== 1 || !Array.isArray(day1.runs)) {
-    console.error(
-      `spike: docs/spike/spike-result.json is spikeVersion ${day1.spikeVersion}, not the day-1 evidence (spikeVersion 1); the re-run already ran. ` +
-        `A second re-run needs the orchestrator's say-so and the day-1 file restored first: git show ${DAY1_COMMIT}:docs/spike/spike-result.json > docs/spike/spike-result.json`,
-    );
+  const { composeObjective, valuesMatch, observedFrom } = shared;
+  const objective = composeObjective(CHECK, CANDIDATE);
+  if (objective !== EXPECTED_OBJECTIVE) {
+    console.error(`spike: dist/check.js composes ${JSON.stringify(objective)} for store-only, expected ${JSON.stringify(EXPECTED_OBJECTIVE)}; run npm run build first; not spending credits`);
     return 4;
   }
-  const day1Runs = day1.runs.map((run) => ({ ...run, phase: 'day-1' }));
-  const eliminated = eliminateFromEvidence(day1Runs);
-  if (eliminated === null) {
-    console.error(`spike: the day-1 evidence shows no assertion-bearing template losing the value on the ${FAIL_PAGE} page; the shared-cause elimination is unsupported; not spending credits`);
+  const day1 = readDay1();
+  if (day1 === null || day1.spikeVersion !== 1 || !Array.isArray(day1.runs)) {
+    console.error(`spike: could not read the day-1 evidence (git show ${DAY1_COMMIT}:docs/spike/spike-result.json, spikeVersion 1); not spending credits`);
     return 4;
   }
   if (day1.nestedAgent?.ok !== true) {
     console.error('spike: the day-1 nested-agent smoke did not pass; it cannot be carried forward; not spending credits');
     return 4;
   }
+  let rerun1 = null;
+  try {
+    rerun1 = JSON.parse(fs.readFileSync(CARRIED_JSON, 'utf8'));
+  } catch {
+    rerun1 = null;
+  }
+  if (rerun1 === null || rerun1.attempt !== 1 || !Array.isArray(rerun1.runs) || rerun1.runs.length !== 1 || rerun1.runs[0].id !== `select-${CANDIDATE}`) {
+    console.error('spike: docs/spike/rerun-1-stop.json (the first re-run attempt) is missing or malformed; not spending credits');
+    return 4;
+  }
+  const stored = (rec, value) => rec !== null && rec !== undefined && rec.runEnd !== null && rec.runEnd !== undefined && valuesMatch(rec.runEnd.observed, value);
+  const day1Runs = day1.runs.map((run) => ({ ...run, phase: 'day-1' }));
+  const rerun1Runs = rerun1.runs.map((run) => ({ ...run, phase: 're-run-1' }));
+
+  // Template verdicts from the carried day-1 runs (no credits): an assertion-bearing template that lost the value
+  // on the $20.00 page is eliminated, and so is any assertion-bearing template that shares that cause.
+  const lost = ASSERT_TEMPLATES.map((t) => findRun(day1Runs, t, FAIL_PAGE)).find((rec) => rec !== null && !stored(rec, FAIL_PAGE)) ?? null;
+  if (lost === null) {
+    console.error(`spike: the day-1 evidence shows no assertion-bearing template losing the value on the ${FAIL_PAGE} page; the shared-cause elimination is unsupported; not spending credits`);
+    return 4;
+  }
+  const eliminated = ASSERT_TEMPLATES.map((id) => {
+    const pass = findRun(day1Runs, id, PASS_PAGE);
+    const fail = findRun(day1Runs, id, FAIL_PAGE);
+    if (fail !== null && !stored(fail, FAIL_PAGE)) {
+      return {
+        id,
+        status: 'eliminated',
+        reason:
+          `${pass !== null && stored(pass, PASS_PAGE) ? `stored ${PASS_PAGE} on the ${PASS_PAGE} page (${pass.id}), but ` : ''}` +
+          `on the ${FAIL_PAGE} page (${fail.id}) ${rawFields(fail)}: no stored value, so the bad ref's signature would be empty`,
+        evidence: [pass?.id, fail.id].filter((x) => typeof x === 'string'),
+      };
+    }
+    return {
+      id,
+      status: 'eliminated',
+      reason: `not run: an assertion-bearing template shares the cause recorded in ${lost.id} (a failed assertion fails the page and loses the stored value)`,
+      evidence: [lost.id],
+    };
+  });
   for (const t of eliminated) console.log(`spike: ${t.id} eliminated without a run: ${t.reason}`);
-  const budget = MAX_RUNS - day1Runs.length;
-  if (budget < NEEDED_RUNS) {
-    console.error(`spike: FIRSTBAD_SPIKE_MAX_RUNS=${MAX_RUNS} leaves ${budget} run(s) after the ${day1Runs.length} day-1 runs; the re-run needs ${NEEDED_RUNS}; not spending credits`);
+  console.log(`spike: attempt 1 carried: ${rerun1.stop}`);
+  if (RERUN_MAX_RUNS < NEEDED_RUNS) {
+    console.error(`spike: FIRSTBAD_SPIKE_RERUN_MAX_RUNS=${RERUN_MAX_RUNS} allows fewer than the ${NEEDED_RUNS} runs this re-run needs; not spending credits`);
     return 3;
   }
 
@@ -1361,24 +1448,25 @@ async function main() {
   const versionMatch = /(\d+\.\d+\.\d+)/.exec(versionRun.stdout);
   const kaneVersion = versionMatch === null ? null : versionMatch[1];
 
-  let kaneRuns = day1Runs.length;
+  let kaneRuns = 0;
   const kaneRun = async (id, page) => {
-    if (kaneRuns >= MAX_RUNS) {
-      flags.push(`run cap reached before ${id} (FIRSTBAD_SPIKE_MAX_RUNS=${MAX_RUNS})`);
+    if (kaneRuns >= RERUN_MAX_RUNS) {
+      flags.push(`run cap reached before ${id} (${RERUN_MAX_RUNS} Kane runs for this re-run)`);
       return null;
     }
     kaneRuns += 1;
     pageTotal = page;
-    console.log(`spike: ${id} (run ${kaneRuns}/${MAX_RUNS} counting the ${day1Runs.length} day-1 runs, page shows ${page}) ...`);
-    const argv = [...KANE, 'run', compose(CANDIDATE, CHECK), '--agent', '--headless', '--timeout', String(TIMEOUT_SEC), '--max-steps', '25'];
+    console.log(`spike: ${id} (run ${kaneRuns}/${RERUN_MAX_RUNS} of this re-run, page shows ${page}) ...`);
+    const argv = [...KANE, 'run', objective, '--agent', '--headless', '--timeout', String(TIMEOUT_SEC), '--max-steps', '25'];
     const r = await runProcess(argv, { cwd: kaneCwd, env: kaneEnv, timeoutMs: (TIMEOUT_SEC + 60) * 1000 });
-    const stream = parseStream(r.stdout);
+    const stream = parseStream(r.stdout, observedFrom);
     const record = {
       id,
-      phase: 're-run',
+      phase: `re-run-${ATTEMPT}`,
       kind: 'run',
       template: CANDIDATE,
       page,
+      objective,
       exitCode: r.code,
       timedOut: r.timedOut,
       spawnError: r.spawnError,
@@ -1391,21 +1479,35 @@ async function main() {
     console.log(`spike: ${id} -> exit ${r.code}, ${r.wallSec} s, ${rawFields(record)}`);
     return record;
   };
+  const empty = (rec) => rec.runEnd === null || rec.runEnd.observed === '';
+  // One page: a run, and one retry only when the value came back empty (no run_end, or no usable final_state key).
+  const runPage = async (base, page) => {
+    const first = await kaneRun(base, page);
+    if (first === null) return { rec: null, stop: `${CANDIDATE} was not run on the ${page} page (run cap)` };
+    let rec = first;
+    if (empty(first)) {
+      console.log(`spike: ${base} returned no value; retrying once`);
+      const retry = await kaneRun(`${base}-retry`, page);
+      if (retry === null) return { rec, stop: `STOP: ${CANDIDATE} returned no value on the ${page} page (${base}) and the run cap left no retry: ${rawFields(first)}` };
+      rec = retry;
+    }
+    if (empty(rec)) return { rec, stop: `STOP: ${CANDIDATE} returned no value on the ${page} page (${first.id}, then ${rec.id}): ${rawFields(rec)}` };
+    if (!stored(rec, page)) return { rec, stop: `STOP: ${CANDIDATE} returned ${JSON.stringify(rec.runEnd.observed)} on the ${page} page (${rec.id}), not ${page}: ${rawFields(rec)}` };
+    return { rec, stop: null };
+  };
 
   const server = await startPage();
   let passRun = null;
   let failRun = null;
   let stopLine = null;
   try {
-    passRun = await kaneRun(`select-${CANDIDATE}`, PASS_PAGE);
-    if (passRun === null) {
-      stopLine = `${CANDIDATE} was not run on the ${PASS_PAGE} page (run cap)`;
-    } else if (!stored(passRun, PASS_PAGE)) {
-      stopLine = `STOP: ${CANDIDATE} did not store ${PASS_PAGE} on the ${PASS_PAGE} page (select-${CANDIDATE}): ${rawFields(passRun)}`;
-    } else {
-      failRun = await kaneRun(`fail-page-${CANDIDATE}`, FAIL_PAGE);
-      if (failRun === null) stopLine = `${CANDIDATE} was not run on the ${FAIL_PAGE} page (run cap)`;
-      else if (!stored(failRun, FAIL_PAGE)) stopLine = `STOP: ${CANDIDATE} did not store ${FAIL_PAGE} on the ${FAIL_PAGE} page (fail-page-${CANDIDATE}): ${rawFields(failRun)}`;
+    const pass = await runPage(`rerun${ATTEMPT}-pass-page`, PASS_PAGE);
+    passRun = pass.rec;
+    stopLine = pass.stop;
+    if (stopLine === null) {
+      const fail = await runPage(`rerun${ATTEMPT}-fail-page`, FAIL_PAGE);
+      failRun = fail.rec;
+      stopLine = fail.stop;
     }
   } finally {
     server.close();
@@ -1414,24 +1516,32 @@ async function main() {
   const after = await runProcess([...KANE, 'balance'], { cwd: kaneCwd, env: kaneEnv, timeoutMs: 60_000 });
   const balanceAfter = after.code === 0 ? parseBalance(after.stdout) : null;
   const wellFormed = passRun !== null && passRun.firstLineIsJson && passRun.streamStart && passRun.runEnd !== null;
-  if (stopLine === null && !wellFormed) stopLine = `STOP: ${CANDIDATE} stored the values but the ${PASS_PAGE} page run_end was not well-formed: ${rawFields(passRun)}`;
+  if (stopLine === null && !wellFormed) stopLine = `STOP: ${CANDIDATE} returned the values but the ${PASS_PAGE} page run_end was not well-formed: ${rawFields(passRun)}`;
   const accepted = stopLine === null;
   if (!accepted) flags.push(stopLine);
+  const observedKeys = {
+    [PASS_PAGE]: passRun?.runEnd?.observedKey ?? null,
+    [FAIL_PAGE]: failRun?.runEnd?.observedKey ?? null,
+  };
   for (const rec of [passRun, failRun]) {
-    if (rec !== null && rec.runEnd !== null && rec.runEnd.status !== 'passed') {
+    if (rec === null || rec.runEnd === null) continue;
+    if (rec.runEnd.observedKey !== null && rec.runEnd.observedKey !== 'observed') {
+      flags.push(`${rec.id}: Kane stored the value under '${rec.runEnd.observedKey}', not 'observed' (read by the one-other-key rule; firstbad still compares it with the expected and the bad ref's value)`);
+    }
+    if (rec.runEnd.status !== 'passed') {
       flags.push(`${rec.id}: Kane status was ${rec.runEnd.status || '(empty)'} with a store-only objective (value-only mode uses Kane's status only as an error signal)`);
     }
   }
   if (balanceAfter === null) flags.push('could not read kane-cli balance after the re-run');
   const templates = [
-    ...eliminated.map(({ ran, ...t }) => t),
+    ...eliminated,
     {
       id: CANDIDATE,
       status: accepted ? 'accepted' : 'rejected',
       reason: accepted
-        ? `stored ${passRun.runEnd.observed} on the ${PASS_PAGE} page (${passRun.id}) and ${failRun.runEnd.observed} on the ${FAIL_PAGE} page (${failRun.id})`
+        ? `returned ${passRun.runEnd.observed} on the ${PASS_PAGE} page (${passRun.id}, key '${passRun.runEnd.observedKey}') and ${failRun.runEnd.observed} on the ${FAIL_PAGE} page (${failRun.id}, key '${failRun.runEnd.observedKey}') with the wording "in a variable named 'observed'"; attempt 1 (${rerun1Runs[0].id}, old wording and old parser) stored under '${keyOf(rerun1Runs[0]) ?? 'none'}'`
         : stopLine,
-      evidence: [passRun?.id, failRun?.id].filter((x) => typeof x === 'string'),
+      evidence: [rerun1Runs[0].id, ...runs.map((r) => r.id)],
     },
   ];
   const decisions = {
@@ -1445,21 +1555,26 @@ async function main() {
   const wall = runs.map((r) => r.wallSec);
   const result = {
     spikeVersion: 2,
+    attempt: ATTEMPT,
     ranAt: new Date().toISOString(),
     platform: `${process.platform} ${process.arch}`,
     node: process.version,
     kaneVersion,
     selectionRule: `a template is accepted only if it stores the value on both the ${PASS_PAGE} page and the ${FAIL_PAGE} page`,
-    limits: { minBalance: MIN_BALANCE, maxRuns: MAX_RUNS, timeoutSec: TIMEOUT_SEC },
+    parserRule: PARSER_RULE,
+    limits: { minBalance: MIN_BALANCE, rerunMaxRuns: RERUN_MAX_RUNS, timeoutSec: TIMEOUT_SEC },
     check: CHECK,
+    objective,
     balance: {
       before: balanceBefore,
       after: balanceAfter,
       delta: balanceAfter !== null ? Math.round((balanceBefore - balanceAfter) * 10000) / 10000 : null,
       beforeRaw: scrub(before.stdout.trim().split(/\r?\n/)[0] ?? '').slice(0, 200),
     },
+    kaneRuns,
     creditsConsumedSum: Math.round(runs.reduce((s, r) => s + (r.runEnd?.creditsConsumed ?? 0), 0) * 100) / 100,
     meanWallSec: wall.length === 0 ? null : Math.round((wall.reduce((a, b) => a + b, 0) / wall.length) * 10) / 10,
+    observedKeys,
     day1: {
       commit: DAY1_COMMIT,
       ranAt: day1.ranAt ?? null,
@@ -1473,9 +1588,18 @@ async function main() {
       decisions: day1.decisions ?? null,
       flags: Array.isArray(day1.flags) ? day1.flags : [],
     },
+    rerun1: {
+      ranAt: rerun1.ranAt ?? null,
+      kaneVersion: rerun1.kaneVersion ?? null,
+      objective: rerun1.objective ?? null,
+      parser: rerun1.parser ?? null,
+      balance: rerun1.balance ?? null,
+      creditsConsumedSum: rerun1.creditsConsumedSum ?? null,
+      stop: rerun1.stop ?? null,
+    },
     nestedAgent: { ...day1.nestedAgent, carriedFrom: 'day-1' },
     templates,
-    runs: [...day1Runs, ...runs],
+    runs: [...day1Runs, ...rerun1Runs, ...runs],
     decisions,
     flags,
   };
@@ -1494,7 +1618,8 @@ async function main() {
     );
   }
   fs.rmSync(kaneCwd, { recursive: true, force: true, maxRetries: 3, retryDelay: 200 });
-  console.log(`spike: balance before ${balanceBefore}, after ${balanceAfter ?? 'unknown'}, delta ${result.balance.delta ?? 'unknown'}`);
+  console.log(`spike: stored key per page: ${PASS_PAGE} ${observedKeys[PASS_PAGE] ?? 'none'}, ${FAIL_PAGE} ${observedKeys[FAIL_PAGE] ?? 'none'}`);
+  console.log(`spike: balance before ${balanceBefore}, after ${balanceAfter ?? 'unknown'}, delta ${result.balance.delta ?? 'unknown'} (${kaneRuns} Kane runs)`);
   console.log('spike: wrote docs/spike/spike-result.json and docs/spike/kane-spike.md');
   for (const f of flags) console.log(`spike flag: ${f}`);
   if (!accepted) {
@@ -1516,11 +1641,11 @@ main().then(
 );
 ```
 
-- [ ] **Step 2: Replace the gate `scripts/spike/check-spike.mjs` (whole file)**
+- [ ] **Step 3: Replace the gate `scripts/spike/check-spike.mjs` (whole file)**
 
 ```js
 #!/usr/bin/env node
-// Offline gate for the spike (Tasks 2 and 2.1): validates what scripts/spike/run-spike.mjs wrote. Never calls Kane.
+// Offline gate for the spike (Tasks 2 and 2.1): validates what scripts/spike/run-spike.mjs wrote (re-run attempt 2). Never calls Kane.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -1528,10 +1653,13 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const RESULT_JSON = path.join(ROOT, 'docs', 'spike', 'spike-result.json');
 const RESULT_MD = path.join(ROOT, 'docs', 'spike', 'kane-spike.md');
+const CARRIED_JSON = path.join(ROOT, 'docs', 'spike', 'rerun-1-stop.json');
 const PROFILE_TS = path.join(ROOT, 'src', 'kane-profile.ts');
-const TEMPLATES = ['commas-assert', 'sentences-assert', 'store-only'];
 const PASS_PAGE = '$18.00';
 const FAIL_PAGE = '$20.00';
+const RERUN_CAP = 4;
+const DAY1_IDS = ['select-commas-assert', 'fail-page-commas-assert', 'replay-fail-page', 'replay-pass-page'];
+const EXPECTED_OBJECTIVE = "Go to http://127.0.0.1:4199/, look at the order summary, then store the total amount shown next to the word Total in a variable named 'observed'";
 const SECRET = [
   /Bearer\s+[A-Za-z0-9._~+/=-]{8,}/i,
   /eyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}/,
@@ -1559,80 +1687,106 @@ function valuesMatch(a, b) {
   return ta.length === 1 && tb.length === 1 && ta[0] === tb[0];
 }
 
-function storedOn(runs, template, page) {
-  return runs.some(
-    (run) =>
-      run.kind === 'run' &&
-      run.template === template &&
-      run.page === page &&
-      typeof run.runEnd?.observed === 'string' &&
-      valuesMatch(run.runEnd.observed, page),
+function storingRun(runs, page) {
+  return (
+    runs.find(
+      (run) =>
+        run.kind === 'run' &&
+        run.template === 'store-only' &&
+        run.page === page &&
+        typeof run.runEnd?.observed === 'string' &&
+        valuesMatch(run.runEnd.observed, page),
+    ) ?? null
   );
 }
 
 if (!fs.existsSync(RESULT_JSON)) {
-  console.log('FAIL: docs/spike/spike-result.json not found (run node scripts/spike/run-spike.mjs once)');
+  console.log('FAIL: docs/spike/spike-result.json not found (npm run build, then node scripts/spike/run-spike.mjs, once)');
   process.exit(1);
 }
 const problems = [];
 const flags = [];
 const raw = fs.readFileSync(RESULT_JSON, 'utf8');
 const md = fs.existsSync(RESULT_MD) ? fs.readFileSync(RESULT_MD, 'utf8') : '';
+const carriedRaw = fs.existsSync(CARRIED_JSON) ? fs.readFileSync(CARRIED_JSON, 'utf8') : '';
 let r = null;
 try {
   r = JSON.parse(raw);
 } catch {
   problems.push('spike-result.json is not valid JSON');
 }
+let carried = null;
+try {
+  carried = JSON.parse(carriedRaw);
+} catch {
+  problems.push('docs/spike/rerun-1-stop.json is missing or not valid JSON');
+}
+if (carried !== null && (carried.attempt !== 1 || !Array.isArray(carried.runs) || carried.runs[0]?.id !== 'select-store-only')) {
+  problems.push('docs/spike/rerun-1-stop.json is not the first re-run attempt (attempt 1, run select-store-only)');
+}
 if (r !== null) {
   const d = r.decisions ?? {};
   const runs = Array.isArray(r.runs) ? r.runs : [];
-  if (r.spikeVersion !== 2) problems.push(`spike-result.json is spikeVersion ${r.spikeVersion}; the store-only re-run has not run (node scripts/spike/run-spike.mjs, once)`);
-  if (!TEMPLATES.includes(d.chosenTemplate)) {
-    problems.push('no objective template was chosen');
-  } else {
-    if (!storedOn(runs, d.chosenTemplate, PASS_PAGE)) problems.push(`the chosen template ${d.chosenTemplate} has no run that stored ${PASS_PAGE} on the ${PASS_PAGE} page`);
-    if (!storedOn(runs, d.chosenTemplate, FAIL_PAGE)) problems.push(`the chosen template ${d.chosenTemplate} has no run that stored ${FAIL_PAGE} on the ${FAIL_PAGE} page`);
-    if (d.chosenTemplate === 'store-only' && d.verdictMode !== 'value-only') problems.push(`store-only was chosen but verdictMode is ${d.verdictMode}, expected value-only`);
-    const entry = Array.isArray(r.templates) ? r.templates.find((t) => t.id === d.chosenTemplate) : undefined;
-    if (entry?.status !== 'accepted') problems.push(`templates[] does not mark ${d.chosenTemplate} accepted`);
-    for (const t of Array.isArray(r.templates) ? r.templates : []) {
-      if (t.id !== d.chosenTemplate && t.status === 'accepted') problems.push(`templates[] also marks ${t.id} accepted`);
+  const rerun = runs.filter((run) => run.phase === 're-run-2');
+  if (r.spikeVersion !== 2 || r.attempt !== 2) {
+    problems.push(`spike-result.json is spikeVersion ${r.spikeVersion}, attempt ${r.attempt ?? 'none'}; the second store-only re-run has not run (npm run build, then node scripts/spike/run-spike.mjs, once)`);
+  }
+  if (d.chosenTemplate !== 'store-only') problems.push(`the chosen template is ${d.chosenTemplate ?? 'none'}, not store-only`);
+  if (d.verdictMode !== 'value-only') problems.push(`verdictMode is ${d.verdictMode}, expected value-only`);
+  for (const page of [PASS_PAGE, FAIL_PAGE]) {
+    const run = storingRun(rerun, page);
+    if (run === null) {
+      problems.push(`no attempt-2 store-only run returned ${page} on the ${page} page`);
+    } else if (typeof run.runEnd.observedKey !== 'string' || run.runEnd.observedKey === '') {
+      problems.push(`run ${run.id} does not record the final_state key it read (observedKey)`);
+    } else if (r.observedKeys?.[page] !== run.runEnd.observedKey) {
+      problems.push(`observedKeys[${page}] is ${r.observedKeys?.[page] ?? 'missing'}, but run ${run.id} read '${run.runEnd.observedKey}'`);
     }
   }
-  if (!['status+value', 'value-only'].includes(d.verdictMode)) problems.push('verdictMode is missing');
+  for (const run of rerun) {
+    if (run.objective !== EXPECTED_OBJECTIVE) problems.push(`run ${run.id} sent ${JSON.stringify(run.objective)}, not the store-only objective ${JSON.stringify(EXPECTED_OBJECTIVE)}`);
+    if (run.runEnd !== null && run.runEnd !== undefined && !('observedKey' in run.runEnd)) problems.push(`run ${run.id} has no observedKey field`);
+    if (typeof run.wallSec !== 'number') problems.push(`run ${run.id} has no wallSec`);
+  }
+  if (r.objective !== EXPECTED_OBJECTIVE) problems.push('spike-result.json does not record the store-only objective it sent');
+  const cap = Math.min(typeof r.limits?.rerunMaxRuns === 'number' ? r.limits.rerunMaxRuns : RERUN_CAP, RERUN_CAP);
+  if (rerun.length > cap) problems.push(`${rerun.length} attempt-2 Kane runs recorded, more than the cap ${cap}`);
+  if (r.kaneRuns !== rerun.length) problems.push(`kaneRuns is ${r.kaneRuns}, but ${rerun.length} attempt-2 runs are recorded`);
+  for (const id of DAY1_IDS) {
+    if (!runs.some((run) => run.id === id && run.phase === 'day-1')) problems.push(`the day-1 run ${id} was not carried forward`);
+  }
+  if (!runs.some((run) => run.id === 'select-store-only' && run.phase === 're-run-1')) problems.push('the attempt-1 run select-store-only was not carried forward');
+  const templates = Array.isArray(r.templates) ? r.templates : [];
+  const status = (id) => templates.find((t) => t.id === id)?.status;
+  if (status('store-only') !== 'accepted') problems.push('templates[] does not mark store-only accepted');
+  for (const id of ['commas-assert', 'sentences-assert']) if (status(id) !== 'eliminated') problems.push(`templates[] does not mark ${id} eliminated`);
   if (d.localRunEndWellFormed !== true) problems.push('the local http:// run did not return a well-formed run_end');
   if (!['stdin', 'arg'].includes(d.agentPromptRoute)) problems.push('agentPromptRoute is missing');
   if (r.nestedAgent?.ok !== true) problems.push('the nested claude -p smoke failed on every route');
-  if (runs.length === 0) {
-    problems.push('no Kane runs were recorded');
-  } else {
-    if (runs.length > (r.limits?.maxRuns ?? 8)) problems.push(`${runs.length} Kane runs recorded, more than the cap ${r.limits?.maxRuns ?? 8}`);
-    for (const run of runs) if (typeof run.wallSec !== 'number') problems.push(`run ${run.id} has no wallSec`);
-  }
   if (typeof r.balance?.before !== 'number') problems.push('the balance before the re-run was not recorded');
   if (!md.startsWith('# Kane day-1 spike')) problems.push('docs/spike/kane-spike.md is missing or malformed');
-  if (TEMPLATES.includes(d.chosenTemplate) && !md.includes(`- Chosen objective template: \`${d.chosenTemplate}\``)) {
-    problems.push(`docs/spike/kane-spike.md does not name ${d.chosenTemplate} as the chosen template`);
-  }
+  if (!md.includes('- Chosen objective template: `store-only` (verdict mode `value-only`)')) problems.push('docs/spike/kane-spike.md does not name store-only (value-only) as the chosen template');
+  if (md.includes('Chosen objective template: `commas-assert`')) problems.push('docs/spike/kane-spike.md still names commas-assert as the chosen template');
   const profile = fs.readFileSync(PROFILE_TS, 'utf8');
   for (const [key, value] of [
-    ['template', d.chosenTemplate],
-    ['verdictMode', d.verdictMode],
+    ['template', 'store-only'],
+    ['verdictMode', 'value-only'],
     ['agentPromptRoute', d.agentPromptRoute],
   ]) {
     if (!profile.includes(`  ${key}: '${value}',`)) problems.push(`src/kane-profile.ts does not record ${key}: '${value}'`);
   }
+  flags.push(`FLAG: stored key per page (attempt 2): ${PASS_PAGE} ${r.observedKeys?.[PASS_PAGE] ?? 'none'}, ${FAIL_PAGE} ${r.observedKeys?.[FAIL_PAGE] ?? 'none'}; attempt 1 used total (old wording)`);
   if (r.nestedAgent?.ok === true && r.nestedAgent.route !== 'stdin') flags.push('FLAG: the nested agent works only with the prompt as an argument (agentPromptRoute=arg)');
   if (d.replayFaithful !== true) flags.push('FLAG: testmd replay is not faithful; re-verification stays on full runs and the replay stretch task is cut');
   if (d.replayHasValues !== true) flags.push('FLAG: testmd replay does not carry stored values');
   if (d.verdictMode === 'value-only') flags.push("FLAG: verdictMode is value-only (firstbad compares the stored value itself; Kane's status is only an error signal)");
-  if (r.spikeVersion === 2 && r.balance !== undefined) flags.push(`FLAG: re-run balance before ${r.balance.before ?? 'unknown'}, after ${r.balance.after ?? 'unknown'}, delta ${r.balance.delta ?? 'unknown'}`);
+  if (r.attempt === 2 && r.balance !== undefined) flags.push(`FLAG: re-run attempt 2 balance before ${r.balance.before ?? 'unknown'}, after ${r.balance.after ?? 'unknown'}, delta ${r.balance.delta ?? 'unknown'} (${r.kaneRuns ?? '?'} Kane runs)`);
   for (const f of r.flags ?? []) flags.push(`FLAG: ${f}`);
 }
 for (const [name, content] of [
   ['spike-result.json', raw],
   ['kane-spike.md', md],
+  ['rerun-1-stop.json', carriedRaw],
 ]) {
   for (const re of SECRET) if (re.test(content)) problems.push(`${name} contains a token-like string`);
   if (content.includes('.evidence')) problems.push(`${name} mentions an evidence pack path`);
@@ -1646,24 +1800,28 @@ if (problems.length > 0) {
 console.log('PASS');
 ```
 
-- [ ] **Step 3: Run the gate to confirm it fails before the re-run**
+- [ ] **Step 4: Run the gate to confirm it fails before the re-run**
 Run: `node scripts/spike/check-spike.mjs`
-Expected: FAIL — exit 1; the output contains `FAIL: spike-result.json is spikeVersion 1; the store-only re-run has not run (node scripts/spike/run-spike.mjs, once)` and `FAIL: the chosen template commas-assert has no run that stored $20.00 on the $20.00 page`
+Expected: FAIL — exit 1; the output contains `the second store-only re-run has not run (npm run build, then node scripts/spike/run-spike.mjs, once)` and `FAIL: the chosen template is` (`commas-assert` with the day-1 file, `none` with attempt 1's STOP file)
 
-- [ ] **Step 4: LIVE — run the re-run exactly once (spends Kane credits: 2 runs, about 5 minutes; the orchestrator runs this one command itself, in the background, and waits for it to exit)**
+- [ ] **Step 5: Build `dist/` so the re-run imports Task 3.1's parser and wording (no credits)**
+Run: `npm run build`
+Expected: exits 0 with no compiler errors
+
+- [ ] **Step 6: LIVE — run the re-run exactly once (spends Kane credits: 2 to 4 runs, about 5–12 minutes; the orchestrator runs this one command itself, in the background, right after Step 5, and waits for it to exit)**
 Run: `node scripts/spike/run-spike.mjs`
-Expected: two `spike: ... eliminated without a run: ...` lines (commas-assert citing `fail-page-commas-assert`, sentences-assert citing the shared cause), `spike: balance before <n> (floor 500)`, the two runs `select-store-only` and `fail-page-store-only` each followed by a `-> exit ..., run_end status=..., reason=..., result_code=..., final_state keys=[...], observed="..."` line, `spike: balance before <n>, after <n>, delta <n>`, `spike: wrote docs/spike/spike-result.json and docs/spike/kane-spike.md`, `spike: chose store-only (verdict mode value-only); rewrote src/kane-profile.ts`, exit code 0. Copy the two balance numbers into your RESULT report. Exit 1 means store-only did not store the value on a page: do not re-run and do not edit any file by hand; report `RESULT: BLOCKED` and paste the `spike flag: STOP: ...` line (it carries the raw run_end status, reason, result_code and final_state keys) plus the `spike: balance before ..., after ...` line — the orchestrator takes it to the user. Exit 3 (balance unreadable or below `FIRSTBAD_MIN_BALANCE`, or the run cap leaves fewer than 2 runs) or exit 4 (the day-1 evidence is missing or the re-run already ran): no credits were spent; report `RESULT: BLOCKED` with the `spike:` line it printed. Never run it a second time without the orchestrator's say-so.
+Expected: two `spike: ... eliminated without a run: ...` lines, `spike: attempt 1 carried: STOP: ...`, `spike: balance before <n> (floor 500)`, then `rerun2-pass-page` (and `rerun2-pass-page-retry` only if the first returned no value) and `rerun2-fail-page` (and `rerun2-fail-page-retry` likewise), each followed by a `-> exit ..., run_end status=..., reason=..., result_code=..., final_state keys=[...], observedKey=..., observed="..."` line, `spike: stored key per page: $18.00 <key>, $20.00 <key>`, `spike: balance before <n>, after <n>, delta <n> (<k> Kane runs)`, `spike: wrote docs/spike/spike-result.json and docs/spike/kane-spike.md`, `spike: chose store-only (verdict mode value-only); rewrote src/kane-profile.ts`, exit code 0. Copy the stored-key line and the balance line into your RESULT report. Exit 1 means store-only did not return its own value on a page: do not re-run and do not edit any file by hand; report `RESULT: BLOCKED` and paste the `spike flag: STOP: ...` line (it carries the raw run_end status, reason, result_code, final_state keys, observedKey and observed) plus the stored-key and balance lines — the orchestrator takes it to the user. Exit 3 (balance unreadable or below `FIRSTBAD_MIN_BALANCE`, or `FIRSTBAD_SPIKE_RERUN_MAX_RUNS` below 2) or exit 4 (attempt 2 already ran, `dist/` missing or stale — run Step 5 — or the carried evidence is missing): no credits were spent; report `RESULT: BLOCKED` with the `spike:` line it printed. Never run it a second time without the orchestrator's say-so.
 
-- [ ] **Step 5: Type-check the rewritten profile**
+- [ ] **Step 7: Type-check the rewritten profile**
 Run: `npx tsc -p tsconfig.json --noEmit`
 Expected: exits 0 with no output
 
-- [ ] **Step 6: Run the gate to confirm it passes**
+- [ ] **Step 8: Run the gate to confirm it passes**
 Run: `node scripts/spike/check-spike.mjs`
-Expected: PASS — the last line is `PASS` (copy the `FLAG:` lines above it, including the re-run balance line, into your RESULT report so the orchestrator surfaces them)
+Expected: PASS — the last line is `PASS` (copy the `FLAG:` lines above it, including the stored-key line and the re-run balance line, into your RESULT report so the orchestrator surfaces them)
 
-- [ ] **Step 7: Commit (kernel-performed — no agent runs this)**
-Message: `feat(spike): re-run picks store-only (value stored on both pages), value-only verdicts`
+- [ ] **Step 9: Commit (kernel-performed — no agent runs this)**
+Message: `feat(spike): re-run attempt 2 picks store-only (value returned on both pages), value-only verdicts`
 
 ---
 
@@ -2634,6 +2792,224 @@ Expected: PASS — output contains `Test Files  3 passed`
 
 - [ ] **Step 9: Commit (kernel-performed — no agent runs this)**
 Message: `feat(kane): scrubber, process helpers, NDJSON parser, Kane runner and stub kane-cli`
+
+---
+
+### Task 3.1: Observed-key parsing and the store-only wording
+
+**Files:**
+- Modify: `src/kane/ndjson.ts`
+- Modify: `src/check.ts`
+- Modify: `test/check.test.ts`
+- Test: `test/observed.test.ts`
+
+**Depends on:** Task 3, Task 4, Task 5, Task 6, Task 12
+**Effort:** medium
+**Priority:** must-have
+**Provides:** `interface ObservedValue { key: string | null; value: string }`, `observedFrom(finalState: unknown): ObservedValue`, `observedOf(finalState: unknown): string`, `composeObjective(c, 'store-only') returns "Go to {url}, {do}, then store {store} in a variable named 'observed'"`
+**Requires:** `parseKaneStream(stdout: string): KaneStream`, `interface KaneRunResult { exitCode: number | null; killed: boolean; terminalMode: boolean; spawnError: string | null; stream: KaneStream; stderrTail: string; durationMs: number }`, `composeObjective(c: Check, template: TemplateId): string`, `classify(i: ClassifyInput): Classification`, `interface ClassifyInput { setup?: StepOutcome; ready?: StepOutcome; kane?: KaneRunResult; expected: string; badValue: string | null; mode: VerdictMode }`
+
+Why (the user's decision, 2026-11-25, after the first spike re-run attempt): with the objective `Go to http://127.0.0.1:4199/, look at the order summary, then store the total amount shown next to the word Total as 'observed'`, Kane read the right value (summary "Read the amount shown next to “Total”: $18.00.", status `passed`, result_code `100`) but stored it under its own key: `final_state` had the keys `url` and `total`. firstbad's `observedOf()` accepted only `final_state.observed` or a `final_state` with exactly one key, so it returned an empty value and the re-run stopped. This task changes two things and nothing else:
+
+1. **Parser rule** (`src/kane/ndjson.ts`): use `final_state.observed` if that key is present; otherwise, if exactly **one** key other than `url` exists, use that key's value; if two or more candidate keys exist (or none), the value is empty — it is then retried once like any empty value (Task 4's `classify()` already does that) — and firstbad never guesses between keys. The new `observedFrom()` also returns which key it read, so the spike re-run (Task 2.1) can record it. `observedOf()` keeps its signature and now delegates to `observedFrom()`.
+2. **store-only wording** (`src/check.ts`): `Go to {url}, {do}, then store {store} in a variable named 'observed'` (still comma-chained, still no `{{…}}`). `commas-assert` and `sentences-assert` are unchanged.
+
+The safeguards stay exactly as they are: `toRunEnd()` still puts the value into `KaneRunEnd.observed`, and `classify()` (Task 4, not touched) still compares it with the expected value and with the bad ref's value, and in `status+value` mode a status/value disagreement is still SKIP. A value read from a key other than `observed` gets no shortcut; the new test proves it goes through the same rule.
+
+No interface changes: `interface KaneRunEnd { status: string; summary: string; oneLiner: string; reason: string; creditsConsumed: number | null; observed: string; testUrl: string | null; resultCode: string | null; durationSec: number | null; blamesTest: boolean }` and `parseKaneStream(stdout: string): KaneStream` keep their exact signatures, so no consumer (Tasks 4–9, 12, 13) changes. The upstream signatures this task's test uses, pasted for reference: `parseKaneStream(stdout: string): KaneStream` and `interface KaneRunResult { exitCode: number | null; killed: boolean; terminalMode: boolean; spawnError: string | null; stream: KaneStream; stderrTail: string; durationMs: number }` (Task 3); `classify(i: ClassifyInput): Classification` with `interface ClassifyInput { setup?: StepOutcome; ready?: StepOutcome; kane?: KaneRunResult; expected: string; badValue: string | null; mode: VerdictMode }` and `composeObjective(c: Check, template: TemplateId): string` (Task 4).
+
+What else was checked, so you do not need to touch it:
+- `test/ndjson.test.ts` stays as it is: its `observedOf` cases (`{ observed: ' $18.00 ' }` → `$18.00`, `{ total: 18 }` → `18`, `{ a: 1, b: 2 }` → empty, `{}`, `null`, `'x'` → empty) all hold under the new rule. The only behaviour that changes is a `final_state` whose keys include `url`: `{ url, total }` now gives `total`'s value, and `{ url }` alone now gives an empty value (before, it returned the URL itself).
+- `test/fixtures/stub-kane.mjs` and `test/fixtures/stub-kane-shop.mjs` emit `final_state: { observed }` (or `{}`) and only read `Go to <url>`, the discount code and a trailing double-quoted expected value from the objective. The store-only objective has no trailing double-quoted value with either wording, so both stubs behave exactly as before. No stub changes.
+- `test/runner.test.ts` and `test/demo-config.test.ts` hard-code `commas-assert`-style objectives, which do not change.
+- `scripts/spike/run-spike.mjs` (Task 2.1) imports `composeObjective`, `valuesMatch` and `observedFrom` from `dist/` after `npm run build`, so the spike and firstbad share one implementation; that is why the comment above `composeObjective` changes.
+
+Every edit below is an exact-string replacement (the `find` text appears exactly once in its file) or a new file. The repo's working tree may use CRLF line endings; match line by line.
+
+- [ ] **Step 1: Write the failing test `test/observed.test.ts` (new file)**
+
+```ts
+import { describe, expect, it } from 'vitest';
+import { observedFrom, observedOf, parseKaneStream } from '../src/kane/ndjson.js';
+import type { KaneRunResult } from '../src/kane/runner.js';
+import { classify } from '../src/verdict.js';
+
+function stdoutWith(finalState: unknown, status: string): string {
+  return [
+    JSON.stringify({ v: 1, type: 'stream_start', cli_version: '0.10.9' }),
+    JSON.stringify({
+      v: 1,
+      type: 'run_end',
+      status,
+      summary: 'Read the amount shown next to Total',
+      reason: 'Objective completed',
+      result_code: 100,
+      final_state: finalState,
+    }),
+  ].join('\n');
+}
+
+function kaneResult(finalState: unknown, status = 'passed'): KaneRunResult {
+  return {
+    exitCode: 0,
+    killed: false,
+    terminalMode: false,
+    spawnError: null,
+    stream: parseKaneStream(stdoutWith(finalState, status)),
+    stderrTail: '',
+    durationMs: 10,
+  };
+}
+
+const URL = 'http://127.0.0.1:4173/';
+
+describe('observedFrom: which final_state key holds the stored value', () => {
+  it('uses final_state.observed when it is present, even next to other keys', () => {
+    expect(observedFrom({ url: URL, observed: ' $18.00 ' })).toEqual({ key: 'observed', value: '$18.00' });
+    expect(observedFrom({ observed: '$20.00', total: '$18.00' })).toEqual({ key: 'observed', value: '$20.00' });
+  });
+
+  it('uses the one key other than url when observed is missing', () => {
+    expect(observedFrom({ url: URL, total: '$18.00' })).toEqual({ key: 'total', value: '$18.00' });
+    expect(observedFrom({ total: 18 })).toEqual({ key: 'total', value: '18' });
+    expect(observedOf({ url: URL, total: '$18.00' })).toBe('$18.00');
+  });
+
+  it('treats several candidate keys, or none, as an empty value and never guesses', () => {
+    expect(observedFrom({ url: URL, total: '$18.00', subtotal: '$20.00' })).toEqual({ key: null, value: '' });
+    expect(observedFrom({ url: URL })).toEqual({ key: null, value: '' });
+    expect(observedFrom({})).toEqual({ key: null, value: '' });
+    expect(observedFrom(null)).toEqual({ key: null, value: '' });
+    expect(observedFrom(['$18.00'])).toEqual({ key: null, value: '' });
+    expect(observedOf({ a: '$18.00', b: '$20.00' })).toBe('');
+  });
+});
+
+describe('a value read from another key still goes through the verdict rule', () => {
+  it('parses run_end.observed from the single other key', () => {
+    expect(parseKaneStream(stdoutWith({ url: URL, total: '$20.00' }, 'passed')).runEnd?.observed).toBe('$20.00');
+  });
+
+  it('compares it with the expected value and with the bad ref value', () => {
+    const total = (v: string): KaneRunResult => kaneResult({ url: URL, total: v });
+    expect(classify({ kane: total('$18.00'), expected: '$18.00', badValue: '$20.00', mode: 'value-only' }).verdict).toBe('PASS');
+    expect(classify({ kane: total('$20.00'), expected: '$18.00', badValue: '$20.00', mode: 'value-only' }).verdict).toBe('FAIL');
+    const third = classify({ kane: total('$7.00'), expected: '$18.00', badValue: '$20.00', mode: 'value-only' });
+    expect(third.verdict).toBe('SKIP');
+    expect(third.reason).toContain("differs from the bad ref's $20.00");
+  });
+
+  it('keeps a status/value disagreement a SKIP', () => {
+    const c = classify({ kane: kaneResult({ url: URL, total: '$18.00' }, 'failed'), expected: '$18.00', badValue: '$20.00', mode: 'status+value' });
+    expect(c.verdict).toBe('SKIP');
+    expect(c.reason).toContain('Kane and the stored value disagree');
+  });
+
+  it('retries several candidate keys like any empty value', () => {
+    const c = classify({ kane: kaneResult({ url: URL, total: '$18.00', subtotal: '$20.00' }), expected: '$18.00', badValue: null, mode: 'value-only' });
+    expect(c.verdict).toBe('SKIP');
+    expect(c.emptyValue).toBe(true);
+    expect(c.retryable).toBe(true);
+  });
+});
+```
+
+- [ ] **Step 2: `test/check.test.ts` — update the store-only expectation**
+
+Replace this line (inside the `builds the three cookbook-style candidates exactly and never emits {{` test):
+
+```ts
+      "Go to http://127.0.0.1:4173/, add the Tote bag to the cart, add the Mug to the cart, type SAVE10 into the discount code field and click Apply, then store the total amount shown next to the word Total as 'observed'",
+```
+
+with:
+
+```ts
+      "Go to http://127.0.0.1:4173/, add the Tote bag to the cart, add the Mug to the cart, type SAVE10 into the discount code field and click Apply, then store the total amount shown next to the word Total in a variable named 'observed'",
+```
+
+- [ ] **Step 3: Run them to confirm they fail**
+Run: `npx vitest run test/observed.test.ts test/check.test.ts`
+Expected: FAIL — `test/observed.test.ts` fails with `TypeError: (0 , observedFrom) is not a function`, and `test/check.test.ts` fails on the store-only expectation (`... as 'observed'` received, `... in a variable named 'observed'` expected)
+
+- [ ] **Step 4: `src/kane/ndjson.ts` — replace `observedOf` with the new rule**
+
+Replace this block (it sits between `function num(...)` and `function toRunEnd(...)`):
+
+```ts
+// The stored value lives under final_state.observed; a final_state with exactly one key is accepted too.
+export function observedOf(finalState: unknown): string {
+  if (typeof finalState !== 'object' || finalState === null || Array.isArray(finalState)) return '';
+  const record = finalState as Record<string, unknown>;
+  if ('observed' in record) return text(record.observed).trim();
+  const keys = Object.keys(record);
+  if (keys.length === 1) {
+    const only = keys[0];
+    return only === undefined ? '' : text(record[only]).trim();
+  }
+  return '';
+}
+```
+
+with:
+
+```ts
+// Which final_state key holds the stored value (spec section 4): 'observed' when present; otherwise the only
+// key other than 'url'; two or more candidate keys give an empty value (retried once), never a guess between keys.
+export interface ObservedValue {
+  key: string | null;
+  value: string;
+}
+
+export function observedFrom(finalState: unknown): ObservedValue {
+  if (typeof finalState !== 'object' || finalState === null || Array.isArray(finalState)) return { key: null, value: '' };
+  const record = finalState as Record<string, unknown>;
+  if ('observed' in record) return { key: 'observed', value: text(record.observed).trim() };
+  const candidates = Object.keys(record).filter((k) => k !== 'url');
+  const only = candidates.length === 1 ? candidates[0] : undefined;
+  if (only === undefined) return { key: null, value: '' };
+  return { key: only, value: text(record[only]).trim() };
+}
+
+export function observedOf(finalState: unknown): string {
+  return observedFrom(finalState).value;
+}
+```
+
+Leave everything else in the file as it is (`toRunEnd()` keeps calling `observedOf(o.final_state)`).
+
+- [ ] **Step 5: `src/check.ts` — two replacements**
+
+Replace:
+
+```ts
+// Spec section 3. Must stay identical to compose() in scripts/spike/run-spike.mjs.
+```
+
+with:
+
+```ts
+// Spec section 3. scripts/spike/run-spike.mjs imports this from dist/check.js, so the spike sends exactly these objectives.
+```
+
+Replace:
+
+```ts
+      return `Go to ${url}, ${d}, then store ${st} as 'observed'`;
+```
+
+with:
+
+```ts
+      return `Go to ${url}, ${d}, then store ${st} in a variable named 'observed'`;
+```
+
+- [ ] **Step 6: Run the parser, objective and verdict suites end to end (this is the gate)**
+Run: `npx vitest run test/observed.test.ts test/ndjson.test.ts test/check.test.ts test/verdict.test.ts test/runner.test.ts test/probe.test.ts test/hunt.test.ts test/demo-config.test.ts`
+Expected: PASS — output contains `Test Files  8 passed` (about 45 s; the global setup compiles `src/` with `tsc` first, so a type error fails it)
+
+- [ ] **Step 7: Commit (kernel-performed — no agent runs this)**
+Message: `feat(kane): read the value from the one non-url final_state key; store-only asks for a variable named 'observed'`
 
 ---
 

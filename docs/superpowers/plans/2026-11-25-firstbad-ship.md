@@ -134,7 +134,7 @@ Exit codes of `hunt` and `demo`: 0 = confirmed culprit and a fix Kane verified (
 
 ## How it works
 
-1. **The check becomes a Kane objective.** firstbad writes the objective itself, in the comma-chained, store-first style Kane's own cookbook recommends ("go to the URL, do the steps, then store the value as 'observed'"), and compares the stored value itself; Kane's own pass or fail is only an error signal. A live spike against Kane CLI 0.10.9 chose this wording: when the objective also asked Kane to assert the expected value, Kane failed the run on the page with the wrong total and kept no stored value, so the bad commit would have had no value to recognize it by.
+1. **The check becomes a Kane objective.** firstbad writes the objective itself, in the comma-chained, store-first style Kane's own cookbook recommends ("go to the URL, do the steps, then store the value in a variable named 'observed'"), and compares the stored value itself; Kane's own pass or fail is only an error signal. A live spike against Kane CLI 0.10.9 chose this wording: when the objective also asked Kane to assert the expected value, Kane failed the run on the page with the wrong total and kept no stored value, so the bad commit would have had no value to recognize it by. Kane sometimes stores the value under a name of its own (the spike saw `total`): firstbad reads `observed` when it is there, otherwise the single stored key other than the page URL, and treats two or more candidate keys as no value rather than guess. Whichever key it came from, the value is still compared with the expected value and with the bad commit's value.
 2. **Bracket.** Kane must fail the bad ref with a stored value (that value becomes the bad signature) and pass the good ref. A run where Kane cannot store anything is retried once and then reported as a mis-phrased check, never as a bug.
 3. **Bisect.** `git bisect run` calls `firstbad oracle` for each commit inside a disposable worktree. The oracle runs your setup, starts your server, waits for the URL, runs one serialized, headless, time-limited Kane check and maps the result: PASS (exit 0) when the stored value matches what you expect, FAIL (exit 1) when it matches the bad signature, SKIP (exit 125) when the commit fails differently (no build, no page, a Kane error after one retry, a third value), ABORT (128) on auth errors or the run cap. It reads both Kane's `run_end` and the stored value, so an upload failure (exit 1 with a passing `run_end`) is not a failure, and a Kane "pass" that stored the wrong value is caught.
 4. **Confirm.** The first bad commit is re-tested together with its parent: culprit FAIL and parent PASS, or the hunt reports it as unconfirmed.
@@ -175,7 +175,7 @@ Message: `docs: README (R3-cli-tool v1) with quickstart, usage and known limits`
 - Create: `docs/demo/recorded-run/report.json`
 - Create: `docs/demo/recorded-run/transcript.txt`
 
-**Depends on:** Task 1, Task 2, Task 2.1, Task 3, Task 4, Task 5, Task 6, Task 7, Task 8, Task 9, Task 10, Task 11, Task 12, Task 13, Task 14
+**Depends on:** Task 1, Task 2, Task 2.1, Task 3, Task 3.1, Task 4, Task 5, Task 6, Task 7, Task 8, Task 9, Task 10, Task 11, Task 12, Task 13, Task 14
 **Effort:** medium
 **Model tier:** top
 **Priority:** must-have
