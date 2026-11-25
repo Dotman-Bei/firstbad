@@ -1,0 +1,32 @@
+{
+  "name": "firstbad",
+  "version": "0.1.0",
+  "description": "git bisect with a real-browser oracle: Kane CLI checks each commit against a plain-English test, names the first bad commit, and re-verifies your coding agent's fix until it passes.",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "firstbad": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "cross-spawn": "7.0.6"
+  },
+  "devDependencies": {
+    "@types/cross-spawn": "6.0.6",
+    "@types/node": "22.20.7",
+    "typescript": "5.9.3",
+    "vitest": "3.2.7"
+  }
+}
