@@ -23,7 +23,10 @@ Guide seat: `claude-sonnet-5-5`, tier standard, effort high (session-stated), op
 - Public flip is a consent-gated Step-3 action and is REQUIRED for submission.
 
 ## Tollgate
-- Report: `docs/tollgate/<date>-tollgate.md` — not yet created; Step 0a's Stage 0 writes it (we are not skipping 0a).
+- Report: `docs/tollgate/2026-11-25-tollgate.md` (commit 68f67a1, written by 0a Stage 0; extend it, never fork a second).
+- **Verdicts (as of 2026-11-25 11:55 WAT):** 0a DONE · 0 CLEAR · **1 BLOCKED (row 19)** · **2 BLOCKED (row 19)** · 2.5 CLEAR on hard rows (Node 22, ffmpeg 9.0.2 with gfxcapture, Python 3.12, 65 GB; rows 6, 12 absent in that session, row 13 YouTube login not probed: re-decide at the 2.5 card) · 3 CLEAR (row 15 setx refused by the permission classifier: use the git-ignored `.env` fallback; row 5 re-probes per session).
+- **Row 19 (`kane-cli` installed + authed + credits) FAIL, blocks Steps 1 and 2.** Clears when `kane-cli --version` (≥ 0.10.9), `kane-cli whoami` and `kane-cli balance` all exit 0. Fix is a user action: `npm install -g @testmuai/kane-cli` (not pnpm), `kane-cli login --oauth`, claim credits with the same email, run one trivial flow. Optional: `npx @testmuai/kane-cli-skill`.
+- Routing (§4): opus→claude-opus-5-5, sonnet→claude-sonnet-5-5, haiku→claude-haiku-5-5; per-spawn effort available; env knobs unset; executor variants NOT installed yet (orchestrator boot; the copy prompt goes before Step 2).
 - Guide-side preflight 2026-11-25: git PASS (email set) · gh PASS (Dotman-Bei; scopes include repo, workflow) · kit PASS (not behind origin/main; 1 local commit ahead, 1 untracked faucet file — not touched) · Node v22.23.4 / npm 10.9.9 · 64 GB free · routing env knobs unset (`CLAUDE_CODE_EFFORT_LEVEL`, `CLAUDE_CODE_SUBAGENT_MODEL_FORCE`, `CLAUDE_CODE_SUBAGENT_MODEL` all empty) · `kane-cli` NOT installed yet · taste skill present at `~/.claude/skills/design-taste-frontend/` (gate.mjs found).
 - Campaign-specific row to add at 0a: **row 19 — `kane-cli` installed, authenticated, credits claimed** (hard for Steps 1 and 2).
 - Verdicts: none yet.
@@ -50,17 +53,26 @@ Win — top-3 finish (1st $1,500 + $250 OpenAI credits). The user framed it as "
 ## Step status
 | Step | Status | Artifact | Verification | Seat settings |
 |---|---|---|---|---|
-| Prereqs (user) | pending | — | user confirms in guide chat | — |
-| 0a | pending | `docs/resources/2026-11-25-kane-cli-hackathon/` + `docs/tollgate/2026-11-25-tollgate.md` | — | |
+| Prereqs (user) | pending | — | user confirms in guide chat: TestMu + hack-site registration done (site shows step 1 done), **team NOT created yet** (solo is fine; the submit form stays hidden until a team exists), `kane-cli` not installed | — |
+| 0a | **done** (e7aa9cc; tollgate 68f67a1) | `docs/resources/2026-11-25-kane-cli-hackathon/` (INDEX, event, tracks, sponsors/kane-cli, prior-art; seeds skipped) + `docs/tollgate/2026-11-25-tollgate.md` | Guide verified 2026-11-25 11:55 WAT: synced, pushed; judging gate + 4×25% + tie-break, prizes, five submission items and deadline (IST/UTC/WAT/PT) match the guide's own earlier fetch of the live page; year 2026 and the "SF" string settled (hidden template nav); Kane file has exact install/auth/run commands, exit codes + `run_end` contract, wiring options, gotchas with issue numbers; gaps labelled (submit-form inputs hidden until a team exists, credit price, whether free credits cover the remote grid) | claude-opus-5-5, effort high (session-stated) |
 | 0 | pending | brief | — | |
 | 1 | pending | spec + plans + manifest | — | |
 | 2 | pending | commits | — | |
 | 2.5 | pending (cut-able) | demo script + video | — | |
 | 3 | pending | gate ledger + submission | — | |
 
+## Pack findings that shape the campaign (from 0a, guide-verified)
+- Kane verdict reaches the agent via exit code (0 pass, 1 fail, 2 error, 3 timeout/cancel) and the `run_end` NDJSON line under `--agent`; `--bug-detection` gives `result_code:"740"` for a confirmed product bug. **No Kane hooks or MCP server**: wire it into the agent's own hooks (e.g. a Claude Code Stop hook) or an outer loop. Official skill: `npx @testmuai/kane-cli-skill`.
+- **Web only** on this Windows machine (local iOS/Android needs macOS Apple Silicon; cloud/real devices need paid plans).
+- Prior art: 29 in-window repos; SATURATED: "agent can't say done until Kane passes", generic fix→rerun loop, deploy/PR gates, README claim checks, bug-report repro→fix. THIN/EMPTY: the AGENT category ("agents with hands"), Cookbook-style DevTools assertions as the core product, `--bug-detection`/740 as a first-class signal, policy-gated verdicts, `bugs`-memory RCA loops. Four of the page's own example ideas are already taken.
+- Gotchas for the architect: false-pass issues (#239, #254, #250, #252, #253) so assert concrete outcomes; Windows `--parallel` Chrome CDP failures (#237) so serialize runs (#242); `testrun` needs non-TTY stdin; `.evidence` packs hold bearer tokens (#247) so never commit them to the public repo; CLI does not stop at 0 credits (#174) so check `balance`; always pass `--timeout`; pin CLI ≥ 0.10.9; measure credit cost on first real runs (no price table).
+- Judges must be able to run it: credentials for any login/paid service plus a recorded-run or backup-deploy fallback.
+- Do not name the project in a way confusable with Kane CLI / KaneAI / TestMu marks (T&Cs §9).
+
 ## Next action
-User opens a NEW chat tab on this repo, sets model `opus` + effort `high`, pastes the Step 0a kickoff (the user does the prerequisites above while it runs).
+User opens a NEW chat tab on this repo, sets model `opus` + effort `max`, pastes the Step 0 (idea-forge) kickoff. In parallel the user (1) creates the team on kaneclihack.sh (solo is fine), (2) installs and authenticates kane-cli, claims credits, runs one flow, so row 19 clears before Step 1.
 
 ## Open blockers
-- `kane-cli` not installed / user not yet registered (user prerequisites above). Blocks Step 1 and Step 2, not 0a/0.
-- Rules/judging pages beyond the homepage unread; year, "SF" vs online and the full terms to be settled in 0a.
+- Row 19 (`kane-cli` not installed/authed, credits unclaimed): blocks Steps 1 and 2, not Step 0.
+- Team not created on the hack site: blocks seeing the real submit form; needed before Step 3.
+- Step 2.5 conditional rows (computer-use, YouTube login, ElevenLabs) undecided; Step 3 env store falls back to a git-ignored `.env`.
