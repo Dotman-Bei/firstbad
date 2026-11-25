@@ -71,8 +71,14 @@ Win — top-3 finish (1st $1,500 + $250 OpenAI credits). The user framed it as "
 - Judges must be able to run it: credentials for any login/paid service plus a recorded-run or backup-deploy fallback.
 - Do not name the project in a way confusable with Kane CLI / KaneAI / TestMu marks (T&Cs §9).
 
+## Row 19 clearance and first live Kane observation (2026-11-25 13:09 WAT)
+- **Row 19 PASS** (guide re-probe): `kane-cli --version` 0.10.9, `whoami` authenticated (profile default, env prod, oauth, token valid), `balance` 11178.5769 credits. Verdicts now: Step 1 CLEAR, Step 2 CLEAR on rows 9/18/19 (stack rows pending from the architect).
+- **First live run (throwaway tab) FAILED, exit 1, and the failure was OUR objective, not the install:** `kane-cli run "Go to https://example.com and verify the page heading says Example Domain, and store the heading as 'heading'" --agent --headless --timeout 120`. Kane stored an empty string and blamed the test (`automation_bug` / `config_issue`, confidence 0.96, `result_code` 720, `reason_code` `assertion_error.checkpoint_failed`, culprit step 0-3), `final_state` `{}`. Cause: the assertion came BEFORE the store, and the pack's rule is to store first and then assert. Navigation worked; `stream_start` was the first stdout line; `run_end` arrived.
+- **Credit accounting:** `run_end.credits_consumed` said 13.67 but the balance fell about 21.4 (11,200 → 11,178.5769). Budget by the BALANCE, not by `credits_consumed`. About 20 credits for a trivial 3-step run, so a dozen-run hunt is roughly 250 or more credits; the account holds ~11,178.
+- Whether "have run Kane CLI" (eligibility) is satisfied: a run was executed and recorded. A passing flow is still wanted before the architect relies on "store as" semantics; a retry with the store-first phrasing is in flight in the throwaway tab and is the seed of the brief's day-1 spike.
+
 ## Next action
-Clear tollgate row 19 (user, via a throwaway chat tab: install + OAuth login + claim credits + one trivial flow), then the guide re-probes `kane-cli --version` / `whoami` / `balance` itself and releases the Step 1 (architect) kickoff in the same message. No Step 1 kickoff is handed over while row 19 FAILs. In parallel the user creates the team on kaneclihack.sh (solo is fine) and confirms the Step 0 effort level.
+User opens a NEW chat tab on the repo, model `opus` + effort `xhigh` (architect, campaign binding; Fable pin was Step 0 only unless the user says otherwise), and pastes the Step 1 (architect) kickoff, which carries the guide-added constraints (stub-Kane gates, first live observation, credit accounting). Queued (one block at a time): a follow-up for the throwaway Kane tab to retry the trivial flow with store-first phrasing; its result goes to the architect session. In parallel the user creates the team on kaneclihack.sh (solo is fine) and confirms the Step 0 effort level.
 
 ## Open blockers
 - Row 19 (`kane-cli` not installed/authed, credits unclaimed): blocks Steps 1 and 2, not Step 0.
