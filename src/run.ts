@@ -54,6 +54,11 @@ export async function runFlow(o: FlowOptions): Promise<FlowResult> {
     throw err;
   }
   const limits = readLimits(o.env);
+  const onSigint = (): void => {
+    o.print('firstbad: interrupted, cleaning up the worktree and session');
+    void cleanupSession(prepared.sessionPath, limits.keepSession).finally(() => process.exit(130));
+  };
+  process.once('SIGINT', onSigint);
   const balance = prepared.balanceBefore === null ? 'unknown' : prepared.balanceBefore.toFixed(2);
   o.print(`firstbad: hunting "${o.check.store}" (expect ${o.check.expected}) from ${o.good} to ${o.bad}, balance ${balance} credits, cap ${limits.maxRuns} Kane runs`);
   try {
@@ -94,6 +99,7 @@ export async function runFlow(o: FlowOptions): Promise<FlowResult> {
     const ok = h.status === 'confirmed' && (o.noFix || fixResult?.status === 'verified');
     return { exitCode: ok ? 0 : 1, report, reportPaths, message: h.message };
   } finally {
+    process.removeListener('SIGINT', onSigint);
     await cleanupSession(prepared.sessionPath, limits.keepSession);
   }
 }

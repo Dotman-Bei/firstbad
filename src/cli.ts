@@ -5,6 +5,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 import { parseAgent } from './agent.js';
 import { validateCheck, type Check } from './check.js';
+import { cleanLeftovers } from './clean.js';
 import { runOracle } from './oracle.js';
 import { runFlow } from './run.js';
 import { splitCommand } from './util/proc.js';
@@ -26,6 +27,7 @@ export const HELP = [
   '  firstbad hunt --good <ref> --url <url> --do "<steps>" --store "<what>" --expect "<value>" --serve "<cmd>"',
   '                [--bad <ref>] [--setup "<cmd>"] [--agent "<cmd>" | --agent none] [--no-fix] [--out <dir>] [--repo <path>]',
   '  firstbad oracle --session <file>    a git-bisect-run script (exit 0 good, 1 bad, 125 skip, 128 abort)',
+  '  firstbad clean [--repo <path>]      remove leftover firstbad worktrees and session folders',
   '  firstbad --version | --help',
   '',
   'Environment: FIRSTBAD_KANE, FIRSTBAD_MIN_BALANCE (500), FIRSTBAD_MAX_RUNS (16), FIRSTBAD_MAX_FIX_ATTEMPTS (3),',
@@ -107,9 +109,23 @@ async function oracleCommand(args: string[], io: CliIO): Promise<number> {
   return runOracle(path.resolve(io.cwd, sessionPath), io.cwd, (l) => io.print(l));
 }
 
+async function cleanCommand(args: string[], io: CliIO): Promise<number> {
+  const at = args.indexOf('--repo');
+  const repo = path.resolve(io.cwd, at >= 0 ? (args[at + 1] ?? '.') : '.');
+  try {
+    const r = await cleanLeftovers(repo);
+    io.print(`firstbad: removed ${r.removedWorktrees.length} worktrees and ${r.removedSessions.length} session folders`);
+    return 0;
+  } catch (err) {
+    io.print(`firstbad clean: ${err instanceof Error ? err.message : String(err)}`);
+    return 2;
+  }
+}
+
 export const COMMANDS: Record<string, Command> = {
   hunt: huntCommand,
   oracle: oracleCommand,
+  clean: cleanCommand,
 };
 
 export async function main(argv: string[], io: CliIO): Promise<number> {
