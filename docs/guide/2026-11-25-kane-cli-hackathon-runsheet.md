@@ -92,9 +92,9 @@ Win — top-3 finish (1st $1,500 + $250 OpenAI credits). The user framed it as "
 ## Next action
 1. Throwaway tab (Sonnet, low): copy the kit's `references/agents/executor-{low,medium,high,xhigh,max}.md` into `.claude/agents/`, commit, push (only those five files).
 2. Then a fresh orchestrator tab (Opus, high) with the Step 2 kickoff (REPO Dotman-Bei/firstbad, review mode autonomous, routing auto).
-3. User creates the team on kaneclihack.sh (solo is fine) before Step 3, and confirms the Step 0 effort level.
+3. Team created on kaneclihack.sh (solo; user-confirmed 2026-11-25 ~17:15 WAT), so the submit form should now be visible: re-read its real input labels before Step 3 and compare with docs/gates/submission-draft.md. User still to confirm the Step 0 effort level.
 
 ## Open blockers
 - Row 19: cleared (PASS). Stack rows S1-S11 are probed by the orchestrator at boot; a FAIL there comes back to the user with its fix hint.
-- Team not created on the hack site: blocks seeing the real submit form; needed before Step 3.
+- Team created (solo), so this no longer blocks. Open item: re-check the real submit-form labels against the draft before Step 3.
 - Step 2.5 conditional rows (computer-use, YouTube login, ElevenLabs) undecided; Step 3 env store falls back to a git-ignored `.env`.
