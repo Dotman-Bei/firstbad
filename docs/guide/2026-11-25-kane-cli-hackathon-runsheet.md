@@ -70,7 +70,7 @@ Win — top-3 finish (1st $1,500 + $250 OpenAI credits). The user framed it as "
 - Do not name the project in a way confusable with Kane CLI / KaneAI / TestMu marks (T&Cs §9).
 
 ## Next action
-User opens a NEW chat tab on this repo, sets model `opus` + effort `max`, pastes the Step 0 (idea-forge) kickoff. In parallel the user (1) creates the team on kaneclihack.sh (solo is fine), (2) installs and authenticates kane-cli, claims credits, runs one flow, so row 19 clears before Step 1.
+User opens a NEW chat tab on this repo, sets model **Fable 5.1 (`claude-fable-5-1`, user's choice, campaign pin override for this seat; recorded in the tollgate Routing section)** + effort `max`, pastes the Step 0 (idea-forge) kickoff. In parallel the user (1) creates the team on kaneclihack.sh (solo is fine), (2) installs and authenticates kane-cli, claims credits, runs one flow, so row 19 clears before Step 1.
 
 ## Open blockers
 - Row 19 (`kane-cli` not installed/authed, credits unclaimed): blocks Steps 1 and 2, not Step 0.
