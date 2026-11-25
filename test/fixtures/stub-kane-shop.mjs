@@ -35,6 +35,15 @@ async function importSource(name, source) {
   return import(pathToFileURL(file).href);
 }
 
+// STUB_SHOP_FINAL_STATE=multikey emits the final_state live Kane 0.10.9 returned for the demo check (2026-11-25):
+// { url, cart_total, discount_code } instead of { observed }.
+function finalState(observed) {
+  if (observed === '') return {};
+  if (env.STUB_SHOP_FINAL_STATE !== 'multikey') return { observed };
+  const m = /Go to (https?:\/\/[^\s,]+)/.exec(args[1] ?? '');
+  return { url: m ? m[1].replace(/\.$/, '') : '', cart_total: observed, discount_code: 'SAVE10' };
+}
+
 function runEnd(status, observed, summary, extra) {
   emit({
     type: 'run_end',
@@ -44,7 +53,7 @@ function runEnd(status, observed, summary, extra) {
     reason: status === 'passed' ? '' : 'assertion_error.checkpoint_failed',
     duration: 2,
     credits_consumed: 12.5,
-    final_state: observed === '' ? {} : { observed },
+    final_state: finalState(observed),
     test_url: 'https://kane.example.invalid/test-manager/shop',
     result_code: status === 'passed' ? '700' : '720',
     ...(extra ?? {}),

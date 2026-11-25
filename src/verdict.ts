@@ -46,6 +46,12 @@ function transientReason(r: KaneRunResult): string {
   return `Kane error (exit ${r.exitCode === null ? 'none' : String(r.exitCode)}): ${detail}`;
 }
 
+// Names only, never values (spec section 4): "final_state keys: url, cart_total, discount_code; 2 non-url keys".
+function keysNote(keys: string[]): string {
+  const nonUrl = keys.filter((k) => k !== 'url').length;
+  return `final_state keys: ${keys.length === 0 ? 'none' : keys.join(', ')}; ${nonUrl} non-url key${nonUrl === 1 ? '' : 's'}`;
+}
+
 export function classify(i: ClassifyInput): Classification {
   const out = (verdict: VerdictKind, reason: string, extra: Partial<Classification> = {}): Classification => ({
     verdict,
@@ -72,7 +78,7 @@ export function classify(i: ClassifyInput): Classification {
   const observed = end.observed.trim();
   const why = end.summary || end.oneLiner || end.reason;
   if (observed === '') {
-    return out('SKIP', `Kane could not read the value${why ? `: ${why}` : ''}`, {
+    return out('SKIP', `Kane could not read the value (${keysNote(end.finalStateKeys)})${why ? `: ${why}` : ''}`, {
       misphrased: end.blamesTest,
       emptyValue: true,
       retryable: true,

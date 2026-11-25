@@ -51,6 +51,9 @@ export async function probe(sessionPath: string, t: ProbeTarget): Promise<ProbeR
       durationMs: Date.now() - started,
       at: new Date().toISOString(),
     };
+    // Spec section 8: the key a value was read from, and for an empty value every final_state key name (names only).
+    if (end !== null && c.observed !== null && end.observedKey !== null) entry.observedKey = end.observedKey;
+    if (end !== null && c.emptyValue === true) entry.finalStateKeys = end.finalStateKeys;
     appendLedger(first.ledgerPath, entry);
     return { entry, misphrased: c.misphrased ?? false, emptyValue: c.emptyValue ?? false };
   };
@@ -81,6 +84,7 @@ export async function probe(sessionPath: string, t: ProbeTarget): Promise<ProbeR
         maxSteps: KANE_MAX_STEPS,
         cwd: s.kaneCwd,
         label: `${t.phase}|${t.label}|${t.subject}`,
+        store: s.check.store,
       });
       const spent = last.stream.runEnd?.creditsConsumed;
       if (typeof spent === 'number') credits = Math.round(((credits ?? 0) + spent) * 100) / 100;

@@ -116,4 +116,24 @@ describe('probe', () => {
     expect(r.misphrased).toBe(true);
     expect(r.emptyValue).toBe(true);
   });
+
+  it('reads the one final_state key whose name shares a word with the store phrase', async () => {
+    const check = { url: 'http://127.0.0.1:4329/', do: 'read the page', store: 'the total amount shown next to the word Total', expected: '$18.00' };
+    const { sessionPath, app } = makeSession(4329, { 'server.mjs': VALUE_SERVER, 'value.txt': '$18.00' }, { check });
+    setStubPlan(work, { default: { scenario: 'multikey' } });
+    const r = await probe(sessionPath, target(app));
+    expect(r.entry).toMatchObject({ verdict: 'PASS', observed: '$18.00', observedKey: 'cart_total', kaneRuns: 1 });
+    expect(r.entry.finalStateKeys).toBeUndefined();
+  });
+
+  it('records the final_state key names, never their values, when no key name matches', async () => {
+    const { sessionPath, app } = makeSession(4330, { 'server.mjs': VALUE_SERVER, 'value.txt': '$18.00' });
+    setStubPlan(work, { default: { scenario: 'multikey' } });
+    const r = await probe(sessionPath, target(app));
+    expect(r.entry).toMatchObject({ verdict: 'SKIP', observed: null, kaneRuns: 2, finalStateKeys: ['url', 'cart_total', 'discount_code'] });
+    expect(r.entry.observedKey).toBeUndefined();
+    expect(r.emptyValue).toBe(true);
+    expect(r.entry.reason).toContain('Kane could not read the value (final_state keys: url, cart_total, discount_code; 2 non-url keys)');
+    expect(JSON.stringify(readLedger(readSession(sessionPath).ledgerPath))).not.toContain('SAVE10');
+  });
 });

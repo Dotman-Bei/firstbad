@@ -17,6 +17,10 @@ export interface LedgerEntry {
   resultCode: string | null;
   durationMs: number;
   at: string;
+  // Spec section 8, set only when they apply: the final_state key the value was read from, and, for an empty
+  // value, every final_state key name Kane returned (names only, never values).
+  observedKey?: string;
+  finalStateKeys?: string[];
 }
 
 export interface Session {

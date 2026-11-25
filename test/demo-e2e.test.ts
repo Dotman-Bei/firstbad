@@ -17,6 +17,7 @@ describe('firstbad demo (stub Kane)', () => {
     process.env.STUB_KANE_LOG = kaneLog;
     process.env.STUB_AGENT_MODE = 'restore-from-parent';
     process.env.STUB_AGENT_FILE = 'pricing.js';
+    process.env.STUB_SHOP_FINAL_STATE = 'multikey';
     const env = { ...process.env, FIRSTBAD_KANE: `"${process.execPath}" "${STUB_SHOP}"` };
     const lines: string[] = [];
     const io: CliIO = { print: (l) => lines.push(l), env, cwd: work, color: false };
@@ -25,13 +26,16 @@ describe('firstbad demo (stub Kane)', () => {
     const report = JSON.parse(fs.readFileSync(path.join(dir, 'report', 'report.json'), 'utf8')) as {
       hunt: { status: string; culprit: { subject: string } };
       fix: { status: string; branch: string };
-      timeline: Array<{ phase: string; verdict: string; reason: string }>;
+      timeline: Array<{ phase: string; verdict: string; reason: string; observed: string | null; observedKey?: string }>;
       cost: { kaneRuns: number };
     };
     expect(report.hunt.status).toBe('confirmed');
     expect(report.hunt.culprit.subject).toBe(CULPRIT_SUBJECT);
     expect(report.timeline.some((e) => e.phase === 'bisect' && e.verdict === 'SKIP' && e.reason.includes('page never loaded'))).toBe(true);
     expect(report.fix.status).toBe('verified');
+    const read = report.timeline.filter((e) => e.observed !== null);
+    expect(read.length).toBeGreaterThanOrEqual(5);
+    expect(read.every((e) => e.observedKey === 'cart_total')).toBe(true);
     expect(report.cost.kaneRuns).toBeLessThanOrEqual(16);
     expect(stubRuns(kaneLog)).toBe(report.cost.kaneRuns);
     expect(git(path.join(dir, 'shop'), 'show', `${report.fix.branch}:pricing.js`)).toContain('toUpperCase');

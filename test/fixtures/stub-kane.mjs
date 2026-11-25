@@ -205,6 +205,23 @@ async function main() {
       );
       return passed ? 0 : 1;
     }
+    case 'multikey': {
+      // What live Kane 0.10.9 returned for the store-only demo check (2026-11-25): it ignored the name 'observed'
+      // and stored several keys. The page text stands in for the total.
+      const m = /Go to (https?:\/\/[^\s,]+)/.exec(objective);
+      const url = m ? m[1].replace(/\.$/, '') : '';
+      let body = '';
+      try {
+        body = (await fetchText(url)).body.trim();
+      } catch (err) {
+        emit({ type: 'stream_start', cli_version: '0.10.9', surface: 'run' });
+        emit({ type: 'error', message: `page unreachable: ${err instanceof Error ? err.message : String(err)}` });
+        return 2;
+      }
+      start();
+      runEnd('passed', body, { reason: 'Objective completed', result_code: '100', final_state: { url, cart_total: body, discount_code: 'SAVE10' } });
+      return 0;
+    }
     default:
       process.stderr.write(`stub-kane: unknown scenario ${scenario}\n`);
       return 2;

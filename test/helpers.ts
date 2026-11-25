@@ -105,6 +105,7 @@ export function clearStubEnv(): void {
     'STUB_AGENT_NOOP_FIRST',
     'STUB_AGENT_STATE',
     'STUB_AGENT_LOG',
+    'STUB_SHOP_FINAL_STATE',
   ]) {
     delete process.env[key];
   }

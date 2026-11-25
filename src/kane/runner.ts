@@ -14,6 +14,8 @@ export interface RunKaneOptions {
   label?: string;
   env?: NodeJS.ProcessEnv;
   killAfterMs?: number;
+  // The check's store phrase; picks the final_state key by name when Kane returns several (spec section 4).
+  store?: string;
 }
 
 export interface KaneRunResult {
@@ -88,7 +90,7 @@ export function runKane(o: RunKaneOptions): Promise<KaneRunResult> {
         killed,
         terminalMode,
         spawnError,
-        stream: parseKaneStream(stdout),
+        stream: parseKaneStream(stdout, o.store),
         stderrTail: stderrTail(stderr),
         durationMs: Date.now() - started,
       });

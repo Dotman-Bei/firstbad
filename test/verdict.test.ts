@@ -24,6 +24,8 @@ function kane(p: KaneShape): KaneRunResult {
           reason: '',
           creditsConsumed: 12,
           observed: '',
+          observedKey: null,
+          finalStateKeys: [],
           testUrl: null,
           resultCode: '720',
           durationSec: 1,
@@ -82,7 +84,7 @@ describe('classify', () => {
   it('retries an empty value and flags a mis-phrased check', () => {
     const c = classify({ ...base, kane: kane({ end: { observed: '', blamesTest: true, summary: 'not found' } }) });
     expect(c).toMatchObject({ verdict: 'SKIP', misphrased: true, emptyValue: true, retryable: true, observed: null });
-    expect(c.reason).toBe('Kane could not read the value: not found');
+    expect(c.reason).toBe('Kane could not read the value (final_state keys: none; 0 non-url keys): not found');
   });
 
   it('passes on the expected value and treats an upload failure as a pass', () => {
