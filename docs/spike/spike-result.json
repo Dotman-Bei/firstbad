@@ -1,0 +1,177 @@
+{
+  "spikeVersion": 1,
+  "ranAt": "2026-11-25T16:25:46.676Z",
+  "platform": "win32 x64",
+  "node": "v22.23.4",
+  "kaneVersion": "0.10.9",
+  "limits": {
+    "minBalance": 500,
+    "maxRuns": 8,
+    "timeoutSec": 300
+  },
+  "check": {
+    "url": "http://127.0.0.1:4199/",
+    "do": "look at the order summary",
+    "store": "the total amount shown next to the word Total",
+    "expected": "$18.00"
+  },
+  "balance": {
+    "before": 11152.2235,
+    "after": 11110.4166,
+    "delta": 41.8069,
+    "beforeRaw": "Available credits: 11152.2235"
+  },
+  "creditsConsumedSum": 38.22,
+  "meanWallSec": 95.3,
+  "recording": "firstbad-spike-commas-assert_test.md",
+  "testmdHelp": "Usage: kane-cli testmd [options] [command]\n\nManage test.md files (run, list, status, delete, export, sync)\n\nOptions:\n  -h, --help               display help for command\n\nCommands:\n  delete [options] <path>  Remove output-<stem>/ and the *_test.md source file\n                           (TMS untouched)\n  export [options] <path>  Generate standalone test code (Playwright)\n  list [options]           List *_test.md files in the working directory\n                           (recursive)\n  run [options] <path>     Run a test from a *_test.md file\n  status <path>            Print local meta.json for a *_test.md (no live TMS\n                           check in v1)\n  sync [options] <path>    Zip the testmd + imports + replay outputs and push\n                           {commit_id}-testmd.zip to cloud",
+  "nestedAgent": {
+    "ok": true,
+    "route": "stdin",
+    "tries": [
+      {
+        "route": "stdin",
+        "ok": true,
+        "exitCode": 0,
+        "wallSec": 26.2,
+        "timedOut": false,
+        "spawnError": null,
+        "outputTail": "`hello.txt` now contains exactly `new` (3 bytes, no trailing newline). No other files touched and no shell commands run."
+      }
+    ]
+  },
+  "runs": [
+    {
+      "id": "select-commas-assert",
+      "kind": "run",
+      "template": "commas-assert",
+      "page": "$18.00",
+      "exitCode": 0,
+      "timedOut": false,
+      "spawnError": null,
+      "wallSec": 159.5,
+      "lines": 14,
+      "firstLineIsJson": true,
+      "streamStart": true,
+      "runEnd": {
+        "status": "passed",
+        "summary": "Reviewed the order summary as requested.\nRead and saved the amount shown next to Total: $18.00.\nConfirmed the saved total matched $18.00.",
+        "oneLiner": "reviewed the order total on the order summary page",
+        "reason": "Objective completed",
+        "resultCode": "100",
+        "creditsConsumed": 16.904564999999998,
+        "durationSec": 59.3,
+        "finalStateKeys": [
+          "url",
+          "observed"
+        ],
+        "observed": "$18.00",
+        "blamesTest": false
+      },
+      "testMdDone": null,
+      "errors": [],
+      "stderrTail": "Skill update available: not installed → 0.1.4 — run `kane-cli install skill`\n\nRunning on: Desktop · Chrome\n"
+    },
+    {
+      "id": "fail-page-commas-assert",
+      "kind": "run",
+      "template": "commas-assert",
+      "page": "$20.00",
+      "exitCode": 1,
+      "timedOut": false,
+      "spawnError": null,
+      "wallSec": 121,
+      "lines": 16,
+      "firstLineIsJson": true,
+      "streamStart": true,
+      "runEnd": {
+        "status": "failed",
+        "summary": "The page showed a total of $20.00, but the agent's read step did not store that amount in {{observed}}. The final check received a placeholder instead of a saved value.\nUpdate the read step to explicitly save the displayed Total amount into {{observed}}, then correct the expected amount or prepare order data that actually totals $18.00.",
+        "oneLiner": "The run failed because the total was not saved before it was checked.",
+        "reason": "Final verification failed: \"The stored {{observed}} value is \"$18.00\".\"",
+        "resultCode": "710",
+        "creditsConsumed": 21.311905,
+        "durationSec": 77.2,
+        "finalStateKeys": [],
+        "observed": "",
+        "blamesTest": true
+      },
+      "testMdDone": null,
+      "errors": [],
+      "stderrTail": "Skill update available: not installed → 0.1.4 — run `kane-cli install skill`\n\nRunning on: Desktop · Chrome\n"
+    },
+    {
+      "id": "replay-fail-page",
+      "kind": "testmd",
+      "template": null,
+      "page": "$20.00",
+      "exitCode": 0,
+      "timedOut": false,
+      "spawnError": null,
+      "wallSec": 64.6,
+      "lines": 24,
+      "firstLineIsJson": true,
+      "streamStart": true,
+      "runEnd": {
+        "status": "passed",
+        "summary": "",
+        "oneLiner": "",
+        "reason": "replay completed",
+        "resultCode": "100",
+        "creditsConsumed": null,
+        "durationSec": 14.17,
+        "finalStateKeys": [],
+        "observed": "",
+        "blamesTest": false
+      },
+      "testMdDone": {
+        "overallStatus": "passed",
+        "durationSec": 33
+      },
+      "errors": [],
+      "stderrTail": "Skill update available: not installed → 0.1.4 — run `kane-cli install skill`\n\n"
+    },
+    {
+      "id": "replay-pass-page",
+      "kind": "testmd",
+      "template": null,
+      "page": "$18.00",
+      "exitCode": 0,
+      "timedOut": false,
+      "spawnError": null,
+      "wallSec": 36,
+      "lines": 25,
+      "firstLineIsJson": true,
+      "streamStart": true,
+      "runEnd": {
+        "status": "passed",
+        "summary": "",
+        "oneLiner": "",
+        "reason": "replay completed",
+        "resultCode": "100",
+        "creditsConsumed": null,
+        "durationSec": 1.33,
+        "finalStateKeys": [],
+        "observed": "",
+        "blamesTest": false
+      },
+      "testMdDone": {
+        "overallStatus": "passed",
+        "durationSec": 13
+      },
+      "errors": [],
+      "stderrTail": "Skill update available: not installed → 0.1.4 — run `kane-cli install skill`\n\n"
+    }
+  ],
+  "decisions": {
+    "chosenTemplate": "commas-assert",
+    "verdictMode": "status+value",
+    "agentPromptRoute": "stdin",
+    "localRunEndWellFormed": true,
+    "replayFaithful": false,
+    "replayHasValues": false
+  },
+  "flags": [
+    "the $20.00 page run did not store $20.00"
+  ]
+}

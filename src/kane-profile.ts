@@ -16,5 +16,5 @@ export const KANE_PROFILE: KaneProfile = {
   template: 'commas-assert',
   verdictMode: 'status+value',
   agentPromptRoute: 'stdin',
-  source: 'default (spike not yet run)',
+  source: 'day-1 spike 2026-11-25',
 };
