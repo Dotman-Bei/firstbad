@@ -175,7 +175,7 @@ Message: `docs: README (R3-cli-tool v1) with quickstart, usage and known limits`
 - Create: `docs/demo/recorded-run/report.json`
 - Create: `docs/demo/recorded-run/transcript.txt`
 
-**Depends on:** Task 1, Task 2, Task 2.1, Task 3, Task 3.1, Task 4, Task 5, Task 6, Task 7, Task 8, Task 9, Task 10, Task 11, Task 12, Task 13, Task 14
+**Depends on:** Task 1, Task 2, Task 2.1, Task 3, Task 3.1, Task 3.2, Task 4, Task 5, Task 6, Task 7, Task 8, Task 9, Task 10, Task 11, Task 12, Task 13, Task 14
 **Effort:** medium
 **Model tier:** top
 **Priority:** must-have
@@ -185,6 +185,8 @@ Message: `docs: README (R3-cli-tool v1) with quickstart, usage and known limits`
 The last LIVE task. Dispatch it only after every must-have task and Task 9 are green against the stub. If the orchestrator cuts the droppable Task 9, it marks Task 9 cut (counted as done for this edge) and Task 15 may run. Step 4 spends real Kane credits (about a dozen runs of about 26 credits and 2–3 minutes each, capped by `FIRSTBAD_MAX_RUNS=24`) and runs the real Claude Code agent; it takes 20–60 minutes, so run it in the background and wait for it to exit (the orchestrator may run that single command itself). Run it **once**. The gate never calls Kane. The transcript and reports are committed to a public repo, so the script scrubs token-shaped strings and evidence paths, replaces the temp folder, the home folder and the local user name (raw, forward-slash and JSON-escaped forms) with `<tmp>`, `~` and `<user>`, and scrubs `report.json` value by value after parsing it so the JSON stays valid.
 
 `node dist/cli.js demo --dir <dir>` (Task 13) generates the shop in `<dir>/shop`, writes `report.md` and `report.json` to `<dir>/report/`, prints the timeline and exits 0 when the culprit is confirmed and the fix is verified. The expected culprit subject is `refactor(cart): extract price helpers`. `firstbad demo` passes no template or verdict mode, so the hunt takes both from `KANE_PROFILE` in `src/kane-profile.ts`, which the spike re-run (Task 2.1) set to `store-only` / `value-only` after store-only stored the value on both spike pages; nothing in this task names a template.
+
+Re-run after core Task 3.2 (the user's decision, spec section 15 decision 14): the first LIVE run of Step 4 aborted at the bracket because on the good ref Kane stored the total under `cart_total` next to `discount_code` and the parser of the time refused to choose between two keys. Task 3.2 chooses the key whose name shares a word with the store phrase and records the `final_state` key names on every empty value. Steps 1 and 2 are unchanged: `scripts/live-demo.mjs` and `scripts/check-recorded-run.mjs` may already exist from the first attempt with exactly the content below (keep them; rewrite them only if they differ), and the files under `docs/demo/recorded-run/` from the failed attempt are overwritten by Step 4. Run Step 4 once more, with `FIRSTBAD_MAX_RUNS=24` and a balance of at least 500 credits; if it does not end green, report `RESULT: BLOCKED` as Step 4 says, quoting the `final_state keys` part of any `Kane could not read the value` reason.
 
 - [ ] **Step 1: Write `scripts/live-demo.mjs`**
 

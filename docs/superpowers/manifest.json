@@ -11,7 +11,8 @@
     "live": "live: true marks the three tasks that spend Kane credits (core:2 day-1 spike, core:2.1 spike re-run attempt 2, ship:15 demo hunt). Their gates are offline; the credit-spending step runs once, in the background (the orchestrator runs that one command itself). Dispatch core:2 first after core:1, and core:2.1 as soon as core:2 and core:3.1 are done (core:3.1 is not live: stub-only gate); core:2.1 runs `npm run build` (Step 5) right before its LIVE step `node scripts/spike/run-spike.mjs` (Step 6). Dispatch ship:15 only after every must-have task and core:9 (unless cut) is done.",
     "human_gate": "No task deploys, moves funds or handles a key or secret: Kane OAuth tokens stay inside kane-cli and the agent uses the local Claude Code login. The public-repo flip, the YouTube upload and the submission are Step-3 campaign gates, outside this manifest.",
     "pending": "No replay re-verification stretch task is authored: the day-1 spike (core:2) recorded replayFaithful=false and replayHasValues=false in docs/spike/spike-result.json (spec section 12), so re-verification stays on full Kane runs.",
-    "spike_rerun": "core:2 chose commas-assert, which lost the stored value on the $20.00 page (run fail-page-commas-assert: status failed, result_code 710, final_state {}). The first core:2.1 attempt (2026-11-25T16:58Z, output never committed) ran store-only with the old wording on the $18.00 page: status passed, result_code 100, but Kane stored the value under its own key (final_state keys url, total), the old parser found no value and it stopped (balance 11110.4166 -> 11091.7249). By the user's decision (spec section 15, decision 13), core:3.1 (not live) changes the parser (final_state.observed, else the one key other than url, else empty; never a guess between keys) and the store-only wording (\"in a variable named 'observed'\"), with unit tests for the three parser cases. core:2.1, rewritten as attempt 2, depends on core:3.1: it imports the objective and the parser from dist/, carries the day-1 runs (git show af63046) and attempt 1 (docs/spike/rerun-1-stop.json), runs store-only on the $18.00 page then the $20.00 page with one retry per page on an empty value (its own cap of 4 Kane runs), records observedKey per run, and writes store-only / value-only to src/kane-profile.ts only if both pages return their own value. Otherwise it reports BLOCKED with the raw run_end fields and final_state keys and the user decides (spec sections 3, 4 and 12; plan docs/superpowers/plans/2026-11-25-firstbad-core.md Tasks 2.1 and 3.1)."
+    "spike_rerun": "core:2 chose commas-assert, which lost the stored value on the $20.00 page (run fail-page-commas-assert: status failed, result_code 710, final_state {}). The first core:2.1 attempt (2026-11-25T16:58Z, output never committed) ran store-only with the old wording on the $18.00 page: status passed, result_code 100, but Kane stored the value under its own key (final_state keys url, total), the old parser found no value and it stopped (balance 11110.4166 -> 11091.7249). By the user's decision (spec section 15, decision 13), core:3.1 (not live) changes the parser (final_state.observed, else the one key other than url, else empty; never a guess between keys) and the store-only wording (\"in a variable named 'observed'\"), with unit tests for the three parser cases. core:2.1, rewritten as attempt 2, depends on core:3.1: it imports the objective and the parser from dist/, carries the day-1 runs (git show af63046) and attempt 1 (docs/spike/rerun-1-stop.json), runs store-only on the $18.00 page then the $20.00 page with one retry per page on an empty value (its own cap of 4 Kane runs), records observedKey per run, and writes store-only / value-only to src/kane-profile.ts only if both pages return their own value. Otherwise it reports BLOCKED with the raw run_end fields and final_state keys and the user decides (spec sections 3, 4 and 12; plan docs/superpowers/plans/2026-11-25-firstbad-core.md Tasks 2.1 and 3.1).",
+    "replan_key_choice": "The first LIVE run of ship:15 (2026-11-25) aborted at the bracket: the bad ref stored $20.00 (FAIL), but on the good ref v1.0 Kane returned final_state keys url, cart_total ($18.00) and discount_code, and core:3.1's rule (two or more non-url keys give an empty value) refused to guess, so the good ref SKIPped twice. By the user's decision (spec section 15, decision 14) core:3.2 (not live; the full offline suite is its gate) chooses, among several non-url keys, the one whose name shares a word with the store phrase (no match or several matches: empty, retried once; never by value; the value is still compared with the expected and the bad values), and permanently records the final_state key names (names only) and the non-url count on every empty-value outcome (in the reason, and in the optional LedgerEntry field finalStateKeys; observedKey on value-bearing outcomes). ship:15 depends on core:3.2 and is re-run once afterwards (FIRSTBAD_MAX_RUNS=24, balance >= 500); its scripts are unchanged and its LIVE step overwrites docs/demo/recorded-run/*."
   },
   "tasks": [
     {
@@ -252,6 +253,83 @@
         "expect": "Test Files  8 passed"
       },
       "commit": "feat(kane): read the value from the one non-url final_state key; store-only asks for a variable named 'observed'",
+      "human_gate": false,
+      "allow_empty": false,
+      "priority": "must-have",
+      "live": false,
+      "status": "pending"
+    },
+    {
+      "id": "core:3.2",
+      "subsystem": "core",
+      "title": "Choose the final_state key by the store phrase's words, and record the key names",
+      "plan": "docs/superpowers/plans/2026-11-25-firstbad-core.md",
+      "depends_on": [
+        "core:3",
+        "core:3.1",
+        "core:4",
+        "core:5",
+        "core:6",
+        "core:8",
+        "demo:12",
+        "demo:13",
+        "ship:14"
+      ],
+      "effort": "medium",
+      "files": {
+        "create": [],
+        "modify": [
+          "src/kane/ndjson.ts",
+          "src/kane/runner.ts",
+          "src/session.ts",
+          "src/probe.ts",
+          "src/verdict.ts",
+          "test/fixtures/stub-kane.mjs",
+          "test/fixtures/stub-kane-shop.mjs",
+          "test/helpers.ts",
+          "test/verdict.test.ts",
+          "test/probe.test.ts",
+          "test/demo-e2e.test.ts",
+          "README.md"
+        ],
+        "test": [
+          "test/observed.test.ts"
+        ]
+      },
+      "provides": [
+        "observedFrom(finalState: unknown, store?: string): ObservedValue",
+        "parseKaneStream(stdout: string, store?: string): KaneStream",
+        "interface KaneRunEnd { status: string; summary: string; oneLiner: string; reason: string; creditsConsumed: number | null; observed: string; observedKey: string | null; finalStateKeys: string[]; testUrl: string | null; resultCode: string | null; durationSec: number | null; blamesTest: boolean }",
+        "interface RunKaneOptions { kaneCmd: string[]; objective: string; timeoutSec: number; maxSteps: number; cwd: string; name?: string; label?: string; env?: NodeJS.ProcessEnv; killAfterMs?: number; store?: string }",
+        "interface LedgerEntry { phase: Phase; label: string; commit: string; subject: string; verdict: VerdictKind; reason: string; observed: string | null; kaneRuns: number; creditsConsumed: number | null; testUrl: string | null; resultCode: string | null; durationMs: number; at: string; observedKey?: string; finalStateKeys?: string[] }",
+        "classify() empty-value reason \"Kane could not read the value (final_state keys: <names, or none>; <n> non-url key(s))[: <Kane's summary>]\"",
+        "test/fixtures/stub-kane.mjs scenario multikey (fetches the page; final_state { url, cart_total: <page text>, discount_code: 'SAVE10' }, status passed)",
+        "test/fixtures/stub-kane-shop.mjs STUB_SHOP_FINAL_STATE=multikey (final_state { url, cart_total, discount_code })"
+      ],
+      "requires": [
+        "parseKaneStream(stdout: string): KaneStream",
+        "interface KaneRunEnd { status: string; summary: string; oneLiner: string; reason: string; creditsConsumed: number | null; observed: string; testUrl: string | null; resultCode: string | null; durationSec: number | null; blamesTest: boolean }",
+        "interface RunKaneOptions { kaneCmd: string[]; objective: string; timeoutSec: number; maxSteps: number; cwd: string; name?: string; label?: string; env?: NodeJS.ProcessEnv; killAfterMs?: number }",
+        "interface KaneRunResult { exitCode: number | null; killed: boolean; terminalMode: boolean; spawnError: string | null; stream: KaneStream; stderrTail: string; durationMs: number }",
+        "interface ObservedValue { key: string | null; value: string }",
+        "observedFrom(finalState: unknown): ObservedValue",
+        "observedOf(finalState: unknown): string",
+        "classify(i: ClassifyInput): Classification",
+        "interface ClassifyInput { setup?: StepOutcome; ready?: StepOutcome; kane?: KaneRunResult; expected: string; badValue: string | null; mode: VerdictMode }",
+        "interface LedgerEntry { phase: Phase; label: string; commit: string; subject: string; verdict: VerdictKind; reason: string; observed: string | null; kaneRuns: number; creditsConsumed: number | null; testUrl: string | null; resultCode: string | null; durationMs: number; at: string }",
+        "probe(sessionPath: string, t: ProbeTarget): Promise<ProbeResult>",
+        "test/helpers.ts (ROOT, STUB_KANE, STUB_AGENT, TINY_SERVER, KANE_CMD, VALUE_SERVER, CRASH_SERVER, tempDir, git, makeRepo, bisectRepo, setStubPlan, clearStubEnv, stubRuns)",
+        "test/fixtures/stub-kane.mjs (STUB_KANE_PLAN rules matched on FIRSTBAD_LABEL; scenarios pass, fail, misphrased, error, auth, timeout, hang, upload-failed, crash, prose, false-pass, token-leak, fetch; logs to STUB_KANE_LOG)",
+        "test/fixtures/stub-kane-shop.mjs (stub kane-cli that computes the Corner Shop total from the served pricing.js and catalog.js; logs to STUB_KANE_LOG)",
+        "main(argv: string[], io: CliIO): Promise<number>",
+        "firstbad demo [--dir <path>] [--port <n>] [--agent \"<cmd>\" | --agent none] [--no-fix] [--force]",
+        "README.md (R3-cli-tool v1)"
+      ],
+      "gate": {
+        "run": "npx vitest run",
+        "expect": "Test Files  20 passed"
+      },
+      "commit": "feat(kane): choose the final_state key whose name shares a word with the store phrase; record key names on empty values",
       "human_gate": false,
       "allow_empty": false,
       "priority": "must-have",
@@ -947,6 +1025,7 @@
         "core:2.1",
         "core:3",
         "core:3.1",
+        "core:3.2",
         "core:4",
         "core:5",
         "core:6",

@@ -5,7 +5,7 @@
 **Tech Stack:** Node >= 20 (built on v22.23.4), npm 10, TypeScript 5.9.3, Vitest 3.2.7, @types/node 22.20.7, cross-spawn 7.0.6, @types/cross-spawn 6.0.6, git >= 2.40 (built on 2.54), kane-cli >= 0.10.9 (npm global), Claude Code CLI 2.1.229 (default agent).
 **Source spec:** docs/superpowers/specs/2026-11-25-firstbad-design.md
 
-Task ids are global across the three plans (core 1–9 plus 2.1 and 3.1, demo 10–13, ship 14–17). Task 2.1 is the spike re-run added after Task 2 chose a template that loses the value on the $20.00 page. Its first attempt stopped because Kane stored the value under its own key (`total`), so Task 3.1 (observed-key parsing and the store-only wording, no live calls) was added, and Task 2.1 was rewritten as attempt 2, which depends on it. Every task carries a `**Priority:**` line (`must-have` / `droppable` / `stretch`); the manifest copies it.
+Task ids are global across the three plans (core 1–9 plus 2.1, 3.1 and 3.2, demo 10–13, ship 14–17). Task 2.1 is the spike re-run added after Task 2 chose a template that loses the value on the $20.00 page. Its first attempt stopped because Kane stored the value under its own key (`total`), so Task 3.1 (observed-key parsing and the store-only wording, no live calls) was added, and Task 2.1 was rewritten as attempt 2, which depends on it. Task 3.2 (not live) was added after the first LIVE run of Task 15 aborted at the bracket: on the good ref Kane stored the total under `cart_total` next to `discount_code`, so Task 3.2 chooses among several keys by the store phrase's words and records the key names on every empty value; Task 15 depends on it. Every task carries a `**Priority:**` line (`must-have` / `droppable` / `stretch`); the manifest copies it.
 
 Standing rules for every task in this plan (the orchestrator also pastes `conventions.md`):
 - ESM everywhere. Relative imports in `src/` end in `.js` (for example `import { scrub } from './scrub.js';`); tests import `../src/<file>.js` and Vitest resolves the `.ts` source.
@@ -3010,6 +3010,688 @@ Expected: PASS — output contains `Test Files  8 passed` (about 45 s; the globa
 
 - [ ] **Step 7: Commit (kernel-performed — no agent runs this)**
 Message: `feat(kane): read the value from the one non-url final_state key; store-only asks for a variable named 'observed'`
+
+---
+
+### Task 3.2: Choose the final_state key by the store phrase's words, and record the key names
+
+**Files:**
+- Modify: `src/kane/ndjson.ts`
+- Modify: `src/kane/runner.ts`
+- Modify: `src/session.ts`
+- Modify: `src/probe.ts`
+- Modify: `src/verdict.ts`
+- Modify: `test/fixtures/stub-kane.mjs`
+- Modify: `test/fixtures/stub-kane-shop.mjs`
+- Modify: `test/helpers.ts`
+- Modify: `test/verdict.test.ts`
+- Modify: `test/probe.test.ts`
+- Modify: `test/demo-e2e.test.ts`
+- Modify: `README.md`
+- Test: `test/observed.test.ts`
+
+**Depends on:** Task 3, Task 3.1, Task 4, Task 5, Task 6, Task 8, Task 12, Task 13, Task 14
+**Effort:** medium
+**Priority:** must-have
+**Provides:** `observedFrom(finalState: unknown, store?: string): ObservedValue`, `parseKaneStream(stdout: string, store?: string): KaneStream`, `interface KaneRunEnd { status: string; summary: string; oneLiner: string; reason: string; creditsConsumed: number | null; observed: string; observedKey: string | null; finalStateKeys: string[]; testUrl: string | null; resultCode: string | null; durationSec: number | null; blamesTest: boolean }`, `interface RunKaneOptions { kaneCmd: string[]; objective: string; timeoutSec: number; maxSteps: number; cwd: string; name?: string; label?: string; env?: NodeJS.ProcessEnv; killAfterMs?: number; store?: string }`, `interface LedgerEntry { phase: Phase; label: string; commit: string; subject: string; verdict: VerdictKind; reason: string; observed: string | null; kaneRuns: number; creditsConsumed: number | null; testUrl: string | null; resultCode: string | null; durationMs: number; at: string; observedKey?: string; finalStateKeys?: string[] }`, `classify() empty-value reason "Kane could not read the value (final_state keys: <names, or none>; <n> non-url key(s))[: <Kane's summary>]"`, `test/fixtures/stub-kane.mjs scenario multikey (fetches the page; final_state { url, cart_total: <page text>, discount_code: 'SAVE10' }, status passed)`, `test/fixtures/stub-kane-shop.mjs STUB_SHOP_FINAL_STATE=multikey (final_state { url, cart_total, discount_code })`
+**Requires:** `parseKaneStream(stdout: string): KaneStream`, `interface KaneRunEnd { status: string; summary: string; oneLiner: string; reason: string; creditsConsumed: number | null; observed: string; testUrl: string | null; resultCode: string | null; durationSec: number | null; blamesTest: boolean }`, `interface RunKaneOptions { kaneCmd: string[]; objective: string; timeoutSec: number; maxSteps: number; cwd: string; name?: string; label?: string; env?: NodeJS.ProcessEnv; killAfterMs?: number }`, `interface KaneRunResult { exitCode: number | null; killed: boolean; terminalMode: boolean; spawnError: string | null; stream: KaneStream; stderrTail: string; durationMs: number }`, `interface ObservedValue { key: string | null; value: string }`, `observedFrom(finalState: unknown): ObservedValue`, `observedOf(finalState: unknown): string`, `classify(i: ClassifyInput): Classification`, `interface ClassifyInput { setup?: StepOutcome; ready?: StepOutcome; kane?: KaneRunResult; expected: string; badValue: string | null; mode: VerdictMode }`, `interface LedgerEntry { phase: Phase; label: string; commit: string; subject: string; verdict: VerdictKind; reason: string; observed: string | null; kaneRuns: number; creditsConsumed: number | null; testUrl: string | null; resultCode: string | null; durationMs: number; at: string }`, `probe(sessionPath: string, t: ProbeTarget): Promise<ProbeResult>`, `test/helpers.ts (ROOT, STUB_KANE, STUB_AGENT, TINY_SERVER, KANE_CMD, VALUE_SERVER, CRASH_SERVER, tempDir, git, makeRepo, bisectRepo, setStubPlan, clearStubEnv, stubRuns)`, `test/fixtures/stub-kane.mjs (STUB_KANE_PLAN rules matched on FIRSTBAD_LABEL; scenarios pass, fail, misphrased, error, auth, timeout, hang, upload-failed, crash, prose, false-pass, token-leak, fetch; logs to STUB_KANE_LOG)`, `test/fixtures/stub-kane-shop.mjs (stub kane-cli that computes the Corner Shop total from the served pricing.js and catalog.js; logs to STUB_KANE_LOG)`, `main(argv: string[], io: CliIO): Promise<number>`, `firstbad demo [--dir <path>] [--port <n>] [--agent "<cmd>" | --agent none] [--no-fix] [--force]`, `README.md (R3-cli-tool v1)`
+
+Why (the user's decision, 2026-11-25, spec section 15 decision 14, after the first LIVE run of Task 15 aborted at the bracket): the bad ref (`HEAD`) stored `$20.00` and classified FAIL, but on the good ref (`v1.0`) Kane's summary said the total was `$18.00` while firstbad read an empty value twice, so the hunt stopped with "the good ref does not pass the check". One diagnostic LIVE run of the same store-only objective on `v1.0` (`Go to http://127.0.0.1:4173/, add the Tote bag to the cart, add the Mug to the cart, type SAVE10 into the discount code field and click Apply, then store the total amount shown next to the word Total in a variable named 'observed'`) ended `status passed`, `result_code 100`, with `final_state` keys `url`, `cart_total` (`$18.00`) and `discount_code` (a 6-character non-money string): Kane ignored the requested name and stored two non-url keys, and Task 3.1's rule (two or more candidates give an empty value) refused to guess. This task changes two things:
+
+1. **Key rule** (`observedFrom` in `src/kane/ndjson.ts`), in this order: `final_state.observed` if that key is present; otherwise, if exactly **one** key other than `url` exists, that key (unchanged from Task 3.1: this single key needs no name match); otherwise, if the caller passes the check's store phrase, the **one** candidate key whose name shares a word with it; no match, two or more matches, no candidates, or no store phrase give an empty value, which is retried once as before. A key is never chosen by its value. Words: a key name is split at camelCase boundaries (`cartTotal` → `cart Total`, `HTMLTotal` → `HTML Total`) and then on every run of characters that are not letters or digits, and lowercased; the store phrase is split on every run of characters that are not letters or digits, and lowercased; empty pieces are dropped; "shares a word" means the two word sets intersect. Whole words only: `subtotal` does not share a word with `total`, and no stop-words are removed. Example: `cart_total` → {cart, total} shares `total` with "the total amount shown next to the word Total"; `discount_code` → {discount, code} shares nothing, so `cart_total` is the one match.
+2. **Diagnostics, permanent**: every Kane run records the `final_state` key names (names only, never values; at most 30, each scrubbed and cut to 64 characters) and the key it read. An empty-value outcome now says which keys Kane returned and how many were not `url`, in the reason (so it reaches `report.md`, `report.json`, the terminal timeline and the hunt's abort message) and in the new optional ledger field `finalStateKeys`; a value-bearing outcome records the key it was read from in the new optional ledger field `observedKey`. The reason becomes `Kane could not read the value (final_state keys: url, cart_total, discount_code; 2 non-url keys)` followed by `: <Kane's summary>` when Kane gave one (`final_state keys: none; 0 non-url keys` for an empty or missing `final_state`; `1 non-url key` in the singular).
+
+The safeguards stay exactly as they are: the chosen value still goes into `KaneRunEnd.observed`, and `classify()` still compares it with the expected value and with the bad ref's value, so a wrong key cannot pass a commit (`discount_code`'s value would match neither `$18.00` nor `$20.00`).
+
+Signatures this task extends (every change is backward compatible; existing callers compile and behave as before):
+- `observedFrom(finalState: unknown): ObservedValue` (Task 3.1) → `observedFrom(finalState: unknown, store?: string): ObservedValue`. Without `store` the rule is Task 3.1's. Consumers: `toRunEnd()` in `src/kane/ndjson.ts` (now passes the store) and `scripts/spike/run-spike.mjs` (Task 2.1, done; calls it with one argument from `dist/`, so it keeps Task 3.1's rule; not touched). `observedOf(finalState: unknown): string` keeps its signature and rule (no store); `test/ndjson.test.ts` and `test/observed.test.ts` use it.
+- `parseKaneStream(stdout: string): KaneStream` (Task 3) → `parseKaneStream(stdout: string, store?: string): KaneStream`. Consumers: `runKane()` (now passes `o.store`), `test/ndjson.test.ts` and `test/observed.test.ts` (one argument; unchanged).
+- `interface KaneRunEnd` (Task 3) gains `observedKey: string | null` and `finalStateKeys: string[]` after `observed`. Only `toRunEnd()` builds one in `src/`; `test/verdict.test.ts` builds one in its `kane()` helper, so its defaults gain the two fields. Readers (`classify()` in `src/verdict.ts`, `probe()` in `src/probe.ts`) are updated here.
+- `interface RunKaneOptions` (Task 3) gains optional `store?: string`. Consumers: `probe()` (now passes `s.check.store`) and `test/runner.test.ts` (does not pass it; unchanged). `kaneArgs()` ignores it, so Kane's argv does not change.
+- `interface LedgerEntry` (Task 5) gains optional `observedKey?: string` and `finalStateKeys?: string[]`. Only `probe()` sets them. `src/oracle.ts` (`crashEntry`), `src/fix.ts`, `src/hunt.ts`, `src/report.ts` and `test/report.test.ts` build or pass entries without them and need no change: the ledger is JSON lines read back by `readLedger()`, the oracle relays the whole entry, and `buildReport()` copies `timeline` through `scrubDeep()`, so both fields reach `report.json` allow-listed (they are fields of `LedgerEntry`) and scrubbed. `renderMarkdown()` and `formatTimelineLine()` are not changed: the key names reach `report.md` and the terminal through the reason (the terminal line cuts the reason at 100 characters, and the key list comes first).
+- `classify(i: ClassifyInput): Classification` keeps its signature; only the empty-value reason text changes. The one exact assertion on that text, in `test/verdict.test.ts`, is updated. `test/hunt.test.ts` only checks that the abort message contains `mis-phrased`, which still holds.
+
+What else was checked, so you do not need to touch it:
+- `src/hunt.ts`, `src/fix.ts`, `src/oracle.ts`, `src/report.ts`, `src/run.ts`, `src/cli.ts` and `src/demo/*` do not change. Every Kane run goes through `probe()` (bracket, bisect via the oracle, confirm, fix), and `probe()` is the only caller of `runKane()`, so passing the store there covers every phase.
+- Task 16 (stretch, not built) replaces the line `        objective: composeObjective(s.check, s.template),` in `src/probe.ts` and the end of `interface Session` in `src/session.ts`; this task leaves both strings exactly as they are.
+- `scripts/live-demo.mjs` and `scripts/check-recorded-run.mjs` (Task 15) need no change: `report.json` gains only the two optional timeline fields, and key names hold no token, evidence path, home folder or user name.
+- The existing `test/observed.test.ts` cases call `observedFrom` without a store, so they keep Task 3.1's rule and stay as they are; the new cases below pass the demo's store phrase.
+- `test/demo-e2e.test.ts` now runs the shop stub with `STUB_SHOP_FINAL_STATE=multikey`, the shape live Kane returned, so the one end-to-end hunt (bracket, bisect, confirm, agent fix) runs through the name match. The `final_state.observed` path stays covered by every other stub test (the stub-kane `fetch` scenario emits `{ observed }`).
+
+Every edit below is an exact-string replacement (the text to find appears exactly once in its file) or a whole-file write. The repo's working tree may use CRLF line endings; match line by line.
+
+- [ ] **Step 1: Write the failing test `test/observed.test.ts` (whole file)**
+
+```ts
+import { describe, expect, it } from 'vitest';
+import { observedFrom, observedOf, parseKaneStream } from '../src/kane/ndjson.js';
+import type { KaneRunResult } from '../src/kane/runner.js';
+import { classify } from '../src/verdict.js';
+
+function stdoutWith(finalState: unknown, status: string): string {
+  return [
+    JSON.stringify({ v: 1, type: 'stream_start', cli_version: '0.10.9' }),
+    JSON.stringify({
+      v: 1,
+      type: 'run_end',
+      status,
+      summary: 'Read the amount shown next to Total',
+      reason: 'Objective completed',
+      result_code: 100,
+      final_state: finalState,
+    }),
+  ].join('\n');
+}
+
+function kaneResult(finalState: unknown, status = 'passed', store?: string): KaneRunResult {
+  return {
+    exitCode: 0,
+    killed: false,
+    terminalMode: false,
+    spawnError: null,
+    stream: parseKaneStream(stdoutWith(finalState, status), store),
+    stderrTail: '',
+    durationMs: 10,
+  };
+}
+
+const URL = 'http://127.0.0.1:4173/';
+const STORE = 'the total amount shown next to the word Total';
+const LIVE = { url: URL, cart_total: '$18.00', discount_code: 'SAVE10' };
+
+describe('observedFrom: which final_state key holds the stored value', () => {
+  it('uses final_state.observed when it is present, even next to other keys', () => {
+    expect(observedFrom({ url: URL, observed: ' $18.00 ' })).toEqual({ key: 'observed', value: '$18.00' });
+    expect(observedFrom({ observed: '$20.00', total: '$18.00' })).toEqual({ key: 'observed', value: '$20.00' });
+  });
+
+  it('uses the one key other than url when observed is missing', () => {
+    expect(observedFrom({ url: URL, total: '$18.00' })).toEqual({ key: 'total', value: '$18.00' });
+    expect(observedFrom({ total: 18 })).toEqual({ key: 'total', value: '18' });
+    expect(observedOf({ url: URL, total: '$18.00' })).toBe('$18.00');
+  });
+
+  it('treats several candidate keys, or none, as an empty value and never guesses', () => {
+    expect(observedFrom({ url: URL, total: '$18.00', subtotal: '$20.00' })).toEqual({ key: null, value: '' });
+    expect(observedFrom({ url: URL })).toEqual({ key: null, value: '' });
+    expect(observedFrom({})).toEqual({ key: null, value: '' });
+    expect(observedFrom(null)).toEqual({ key: null, value: '' });
+    expect(observedFrom(['$18.00'])).toEqual({ key: null, value: '' });
+    expect(observedOf({ a: '$18.00', b: '$20.00' })).toBe('');
+  });
+});
+
+describe('observedFrom with the store phrase: several keys are chosen by name, never by value (decision 14)', () => {
+  it('case 1: observed present wins over every other key', () => {
+    expect(observedFrom({ ...LIVE, observed: '$20.00' }, STORE)).toEqual({ key: 'observed', value: '$20.00' });
+  });
+
+  it('case 2: one other key is used without a name match, as before', () => {
+    expect(observedFrom({ url: URL, discount_code: 'SAVE10' }, STORE)).toEqual({ key: 'discount_code', value: 'SAVE10' });
+    expect(observedFrom({ url: URL, total: '$18.00' }, STORE)).toEqual({ key: 'total', value: '$18.00' });
+  });
+
+  it('case 3: several keys, exactly one shares a word with the store phrase', () => {
+    expect(observedFrom(LIVE, STORE)).toEqual({ key: 'cart_total', value: '$18.00' });
+    expect(observedFrom({ url: URL, cartTotal: '$18.00', discountCode: 'SAVE10' }, STORE)).toEqual({ key: 'cartTotal', value: '$18.00' });
+    expect(observedFrom({ 'CART-TOTAL': '$18.00', 'promo code': 'SAVE10' }, STORE)).toEqual({ key: 'CART-TOTAL', value: '$18.00' });
+    expect(observedFrom({ subtotal: '$20.00', grand_total: '$18.00' }, STORE)).toEqual({ key: 'grand_total', value: '$18.00' });
+  });
+
+  it('case 4: several keys with no match, or several matches, give an empty value', () => {
+    expect(observedFrom({ url: URL, price: '$18.00', discount_code: 'SAVE10' }, STORE)).toEqual({ key: null, value: '' });
+    expect(observedFrom({ url: URL, cart_total: '$18.00', total_amount: '$20.00' }, STORE)).toEqual({ key: null, value: '' });
+    expect(observedFrom({ url: URL, subtotal: '$20.00', discount: '$2.00' }, STORE)).toEqual({ key: null, value: '' });
+    expect(observedFrom(LIVE)).toEqual({ key: null, value: '' });
+    expect(observedFrom(LIVE, '')).toEqual({ key: null, value: '' });
+  });
+
+  it('case 5: only url, or nothing, gives an empty value', () => {
+    expect(observedFrom({ url: URL }, STORE)).toEqual({ key: null, value: '' });
+    expect(observedFrom({}, STORE)).toEqual({ key: null, value: '' });
+    expect(observedFrom(null, STORE)).toEqual({ key: null, value: '' });
+  });
+});
+
+describe('a value read from another key still goes through the verdict rule', () => {
+  it('parses run_end.observed from the single other key', () => {
+    expect(parseKaneStream(stdoutWith({ url: URL, total: '$20.00' }, 'passed')).runEnd?.observed).toBe('$20.00');
+  });
+
+  it('compares it with the expected value and with the bad ref value', () => {
+    const total = (v: string): KaneRunResult => kaneResult({ url: URL, total: v });
+    expect(classify({ kane: total('$18.00'), expected: '$18.00', badValue: '$20.00', mode: 'value-only' }).verdict).toBe('PASS');
+    expect(classify({ kane: total('$20.00'), expected: '$18.00', badValue: '$20.00', mode: 'value-only' }).verdict).toBe('FAIL');
+    const third = classify({ kane: total('$7.00'), expected: '$18.00', badValue: '$20.00', mode: 'value-only' });
+    expect(third.verdict).toBe('SKIP');
+    expect(third.reason).toContain("differs from the bad ref's $20.00");
+  });
+
+  it('keeps a status/value disagreement a SKIP', () => {
+    const c = classify({ kane: kaneResult({ url: URL, total: '$18.00' }, 'failed'), expected: '$18.00', badValue: '$20.00', mode: 'status+value' });
+    expect(c.verdict).toBe('SKIP');
+    expect(c.reason).toContain('Kane and the stored value disagree');
+  });
+
+  it('retries several candidate keys like any empty value', () => {
+    const c = classify({ kane: kaneResult({ url: URL, total: '$18.00', subtotal: '$20.00' }), expected: '$18.00', badValue: null, mode: 'value-only' });
+    expect(c.verdict).toBe('SKIP');
+    expect(c.emptyValue).toBe(true);
+    expect(c.retryable).toBe(true);
+  });
+});
+
+describe('the name-matched key in a run_end, and the key names on an empty value', () => {
+  it('reads cart_total from the live final_state and records the key names only', () => {
+    const end = parseKaneStream(stdoutWith(LIVE, 'passed'), STORE).runEnd;
+    expect(end?.observed).toBe('$18.00');
+    expect(end?.observedKey).toBe('cart_total');
+    expect(end?.finalStateKeys).toEqual(['url', 'cart_total', 'discount_code']);
+    expect(JSON.stringify(end?.finalStateKeys)).not.toContain('SAVE10');
+  });
+
+  it('judges the name-matched value against the expected and the bad value', () => {
+    const live = (v: string): KaneRunResult => kaneResult({ ...LIVE, cart_total: v }, 'passed', STORE);
+    expect(classify({ kane: live('$18.00'), expected: '$18.00', badValue: '$20.00', mode: 'value-only' })).toMatchObject({ verdict: 'PASS', observed: '$18.00' });
+    expect(classify({ kane: live('$20.00'), expected: '$18.00', badValue: '$20.00', mode: 'value-only' }).verdict).toBe('FAIL');
+    expect(classify({ kane: live('$7.00'), expected: '$18.00', badValue: '$20.00', mode: 'value-only' }).verdict).toBe('SKIP');
+  });
+
+  it('names the keys and counts the non-url ones when no value is read', () => {
+    const c = classify({ kane: kaneResult(LIVE), expected: '$18.00', badValue: null, mode: 'value-only' });
+    expect(c).toMatchObject({ verdict: 'SKIP', emptyValue: true, retryable: true, observed: null });
+    expect(c.reason).toBe('Kane could not read the value (final_state keys: url, cart_total, discount_code; 2 non-url keys): Read the amount shown next to Total');
+    expect(c.reason).not.toContain('SAVE10');
+    const none = classify({ kane: kaneResult({}), expected: '$18.00', badValue: null, mode: 'value-only' });
+    expect(none.reason).toBe('Kane could not read the value (final_state keys: none; 0 non-url keys): Read the amount shown next to Total');
+    const blank = classify({ kane: kaneResult({ url: URL, total: '' }), expected: '$18.00', badValue: null, mode: 'value-only' });
+    expect(blank.reason).toContain('(final_state keys: url, total; 1 non-url key)');
+  });
+});
+```
+
+- [ ] **Step 2: `test/probe.test.ts` — add two probe tests (one replacement)**
+
+Replace (the end of the last test and of the file):
+
+```ts
+    expect(r.misphrased).toBe(true);
+    expect(r.emptyValue).toBe(true);
+  });
+});
+```
+
+with:
+
+```ts
+    expect(r.misphrased).toBe(true);
+    expect(r.emptyValue).toBe(true);
+  });
+
+  it('reads the one final_state key whose name shares a word with the store phrase', async () => {
+    const check = { url: 'http://127.0.0.1:4329/', do: 'read the page', store: 'the total amount shown next to the word Total', expected: '$18.00' };
+    const { sessionPath, app } = makeSession(4329, { 'server.mjs': VALUE_SERVER, 'value.txt': '$18.00' }, { check });
+    setStubPlan(work, { default: { scenario: 'multikey' } });
+    const r = await probe(sessionPath, target(app));
+    expect(r.entry).toMatchObject({ verdict: 'PASS', observed: '$18.00', observedKey: 'cart_total', kaneRuns: 1 });
+    expect(r.entry.finalStateKeys).toBeUndefined();
+  });
+
+  it('records the final_state key names, never their values, when no key name matches', async () => {
+    const { sessionPath, app } = makeSession(4330, { 'server.mjs': VALUE_SERVER, 'value.txt': '$18.00' });
+    setStubPlan(work, { default: { scenario: 'multikey' } });
+    const r = await probe(sessionPath, target(app));
+    expect(r.entry).toMatchObject({ verdict: 'SKIP', observed: null, kaneRuns: 2, finalStateKeys: ['url', 'cart_total', 'discount_code'] });
+    expect(r.entry.observedKey).toBeUndefined();
+    expect(r.emptyValue).toBe(true);
+    expect(r.entry.reason).toContain('Kane could not read the value (final_state keys: url, cart_total, discount_code; 2 non-url keys)');
+    expect(JSON.stringify(readLedger(readSession(sessionPath).ledgerPath))).not.toContain('SAVE10');
+  });
+});
+```
+
+- [ ] **Step 3: `test/verdict.test.ts` — two replacements**
+
+Replace (inside the `kane()` helper's default `runEnd`):
+
+```ts
+          observed: '',
+          testUrl: null,
+```
+
+with:
+
+```ts
+          observed: '',
+          observedKey: null,
+          finalStateKeys: [],
+          testUrl: null,
+```
+
+Replace:
+
+```ts
+    expect(c.reason).toBe('Kane could not read the value: not found');
+```
+
+with:
+
+```ts
+    expect(c.reason).toBe('Kane could not read the value (final_state keys: none; 0 non-url keys): not found');
+```
+
+- [ ] **Step 4: `test/demo-e2e.test.ts` — three replacements**
+
+Replace:
+
+```ts
+    process.env.STUB_AGENT_FILE = 'pricing.js';
+```
+
+with:
+
+```ts
+    process.env.STUB_AGENT_FILE = 'pricing.js';
+    process.env.STUB_SHOP_FINAL_STATE = 'multikey';
+```
+
+Replace:
+
+```ts
+      timeline: Array<{ phase: string; verdict: string; reason: string }>;
+```
+
+with:
+
+```ts
+      timeline: Array<{ phase: string; verdict: string; reason: string; observed: string | null; observedKey?: string }>;
+```
+
+Replace:
+
+```ts
+    expect(report.fix.status).toBe('verified');
+```
+
+with:
+
+```ts
+    expect(report.fix.status).toBe('verified');
+    const read = report.timeline.filter((e) => e.observed !== null);
+    expect(read.length).toBeGreaterThanOrEqual(5);
+    expect(read.every((e) => e.observedKey === 'cart_total')).toBe(true);
+```
+
+- [ ] **Step 5: `test/helpers.ts` — one replacement (clear the new stub variable between tests)**
+
+Replace:
+
+```ts
+    'STUB_AGENT_LOG',
+  ]) {
+```
+
+with:
+
+```ts
+    'STUB_AGENT_LOG',
+    'STUB_SHOP_FINAL_STATE',
+  ]) {
+```
+
+- [ ] **Step 6: Run the tests to confirm they fail**
+Run: `npx vitest run test/observed.test.ts test/verdict.test.ts test/probe.test.ts`
+Expected: FAIL — `test/observed.test.ts` fails the new store-phrase cases (`observedFrom(LIVE, STORE)` returns `{ key: null, value: '' }`, `runEnd.observedKey` is undefined), `test/verdict.test.ts` fails on the reason text (`Kane could not read the value: not found` received), and the two new `test/probe.test.ts` tests fail (the stub has no `multikey` scenario yet, so Kane errors and the probe skips)
+
+- [ ] **Step 7: `test/fixtures/stub-kane.mjs` — add the `multikey` scenario (one replacement)**
+
+Replace:
+
+```js
+    default:
+      process.stderr.write(`stub-kane: unknown scenario ${scenario}\n`);
+```
+
+with:
+
+```js
+    case 'multikey': {
+      // What live Kane 0.10.9 returned for the store-only demo check (2026-11-25): it ignored the name 'observed'
+      // and stored several keys. The page text stands in for the total.
+      const m = /Go to (https?:\/\/[^\s,]+)/.exec(objective);
+      const url = m ? m[1].replace(/\.$/, '') : '';
+      let body = '';
+      try {
+        body = (await fetchText(url)).body.trim();
+      } catch (err) {
+        emit({ type: 'stream_start', cli_version: '0.10.9', surface: 'run' });
+        emit({ type: 'error', message: `page unreachable: ${err instanceof Error ? err.message : String(err)}` });
+        return 2;
+      }
+      start();
+      runEnd('passed', body, { reason: 'Objective completed', result_code: '100', final_state: { url, cart_total: body, discount_code: 'SAVE10' } });
+      return 0;
+    }
+    default:
+      process.stderr.write(`stub-kane: unknown scenario ${scenario}\n`);
+```
+
+- [ ] **Step 8: `test/fixtures/stub-kane-shop.mjs` — two replacements**
+
+Replace:
+
+```js
+function runEnd(status, observed, summary, extra) {
+```
+
+with:
+
+```js
+// STUB_SHOP_FINAL_STATE=multikey emits the final_state live Kane 0.10.9 returned for the demo check (2026-11-25):
+// { url, cart_total, discount_code } instead of { observed }.
+function finalState(observed) {
+  if (observed === '') return {};
+  if (env.STUB_SHOP_FINAL_STATE !== 'multikey') return { observed };
+  const m = /Go to (https?:\/\/[^\s,]+)/.exec(args[1] ?? '');
+  return { url: m ? m[1].replace(/\.$/, '') : '', cart_total: observed, discount_code: 'SAVE10' };
+}
+
+function runEnd(status, observed, summary, extra) {
+```
+
+Replace:
+
+```js
+    final_state: observed === '' ? {} : { observed },
+```
+
+with:
+
+```js
+    final_state: finalState(observed),
+```
+
+- [ ] **Step 9: `src/kane/ndjson.ts` — six replacements**
+
+Replace (inside `interface KaneRunEnd`):
+
+```ts
+  observed: string;
+  testUrl: string | null;
+```
+
+with:
+
+```ts
+  observed: string;
+  observedKey: string | null;
+  finalStateKeys: string[];
+  testUrl: string | null;
+```
+
+Replace (the comment, `interface ObservedValue` and `observedFrom`; `observedOf` below it stays as it is):
+
+```ts
+// Which final_state key holds the stored value (spec section 4): 'observed' when present; otherwise the only
+// key other than 'url'; two or more candidate keys give an empty value (retried once), never a guess between keys.
+export interface ObservedValue {
+  key: string | null;
+  value: string;
+}
+
+export function observedFrom(finalState: unknown): ObservedValue {
+  if (typeof finalState !== 'object' || finalState === null || Array.isArray(finalState)) return { key: null, value: '' };
+  const record = finalState as Record<string, unknown>;
+  if ('observed' in record) return { key: 'observed', value: text(record.observed).trim() };
+  const candidates = Object.keys(record).filter((k) => k !== 'url');
+  const only = candidates.length === 1 ? candidates[0] : undefined;
+  if (only === undefined) return { key: null, value: '' };
+  return { key: only, value: text(record[only]).trim() };
+}
+```
+
+with:
+
+```ts
+// Which final_state key holds the stored value (spec section 4): 'observed' when present; otherwise the only
+// key other than 'url'; with two or more candidate keys, the one candidate whose name shares a word with the
+// store phrase. No match, several matches or no store phrase give an empty value (retried once). A key is
+// never chosen by its value.
+export interface ObservedValue {
+  key: string | null;
+  value: string;
+}
+
+// Lowercase words of letters and digits: "the total amount shown next to the word Total" gives the, total, amount, ...
+function words(s: string): string[] {
+  return s
+    .toLowerCase()
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((w) => w !== '');
+}
+
+// A key name is first split at camelCase boundaries: cart_total, cartTotal and CART-TOTAL all give cart, total.
+function keyWords(key: string): string[] {
+  return words(key.replace(/([\p{Ll}\p{N}])(\p{Lu})/gu, '$1 $2').replace(/(\p{Lu})(\p{Lu}\p{Ll})/gu, '$1 $2'));
+}
+
+export function observedFrom(finalState: unknown, store?: string): ObservedValue {
+  if (typeof finalState !== 'object' || finalState === null || Array.isArray(finalState)) return { key: null, value: '' };
+  const record = finalState as Record<string, unknown>;
+  const read = (key: string): ObservedValue => ({ key, value: text(record[key]).trim() });
+  if ('observed' in record) return read('observed');
+  const candidates = Object.keys(record).filter((k) => k !== 'url');
+  const only = candidates.length === 1 ? candidates[0] : undefined;
+  if (only !== undefined) return read(only);
+  if (candidates.length === 0 || store === undefined) return { key: null, value: '' };
+  const phrase = new Set(words(store));
+  const named = candidates.filter((k) => keyWords(k).some((w) => phrase.has(w)));
+  const match = named.length === 1 ? named[0] : undefined;
+  return match === undefined ? { key: null, value: '' } : read(match);
+}
+```
+
+Replace:
+
+```ts
+function toRunEnd(o: Record<string, unknown>, line: string): KaneRunEnd {
+  return {
+```
+
+with:
+
+```ts
+// The final_state key names only, never their values (spec section 8): at most 30, each scrubbed and cut to 64 chars.
+function keysOf(finalState: unknown): string[] {
+  if (typeof finalState !== 'object' || finalState === null || Array.isArray(finalState)) return [];
+  return Object.keys(finalState)
+    .slice(0, 30)
+    .map((k) => scrub(k).slice(0, 64));
+}
+
+function toRunEnd(o: Record<string, unknown>, line: string, store: string | undefined): KaneRunEnd {
+  const found = observedFrom(o.final_state, store);
+  return {
+```
+
+Replace:
+
+```ts
+    observed: scrub(observedOf(o.final_state)).slice(0, 200),
+```
+
+with:
+
+```ts
+    observed: scrub(found.value).slice(0, 200),
+    observedKey: found.key === null ? null : scrub(found.key).slice(0, 64),
+    finalStateKeys: keysOf(o.final_state),
+```
+
+Replace:
+
+```ts
+export function parseKaneStream(stdout: string): KaneStream {
+```
+
+with:
+
+```ts
+export function parseKaneStream(stdout: string, store?: string): KaneStream {
+```
+
+Then replace:
+
+```ts
+      stream.runEnd = toRunEnd(o, line);
+```
+
+with:
+
+```ts
+      stream.runEnd = toRunEnd(o, line, store);
+```
+
+- [ ] **Step 10: `src/kane/runner.ts` — two replacements**
+
+Replace (the end of `interface RunKaneOptions`):
+
+```ts
+  killAfterMs?: number;
+}
+```
+
+with:
+
+```ts
+  killAfterMs?: number;
+  // The check's store phrase; picks the final_state key by name when Kane returns several (spec section 4).
+  store?: string;
+}
+```
+
+Replace:
+
+```ts
+        stream: parseKaneStream(stdout),
+```
+
+with:
+
+```ts
+        stream: parseKaneStream(stdout, o.store),
+```
+
+- [ ] **Step 11: `src/session.ts` — one replacement (the end of `interface LedgerEntry`)**
+
+Replace:
+
+```ts
+  at: string;
+}
+```
+
+with:
+
+```ts
+  at: string;
+  // Spec section 8, set only when they apply: the final_state key the value was read from, and, for an empty
+  // value, every final_state key name Kane returned (names only, never values).
+  observedKey?: string;
+  finalStateKeys?: string[];
+}
+```
+
+- [ ] **Step 12: `src/probe.ts` — two replacements**
+
+Replace:
+
+```ts
+        label: `${t.phase}|${t.label}|${t.subject}`,
+```
+
+with:
+
+```ts
+        label: `${t.phase}|${t.label}|${t.subject}`,
+        store: s.check.store,
+```
+
+Replace:
+
+```ts
+      at: new Date().toISOString(),
+    };
+    appendLedger(first.ledgerPath, entry);
+```
+
+with:
+
+```ts
+      at: new Date().toISOString(),
+    };
+    // Spec section 8: the key a value was read from, and for an empty value every final_state key name (names only).
+    if (end !== null && c.observed !== null && end.observedKey !== null) entry.observedKey = end.observedKey;
+    if (end !== null && c.emptyValue === true) entry.finalStateKeys = end.finalStateKeys;
+    appendLedger(first.ledgerPath, entry);
+```
+
+- [ ] **Step 13: `src/verdict.ts` — two replacements**
+
+Replace:
+
+```ts
+export function classify(i: ClassifyInput): Classification {
+```
+
+with:
+
+```ts
+// Names only, never values (spec section 4): "final_state keys: url, cart_total, discount_code; 2 non-url keys".
+function keysNote(keys: string[]): string {
+  const nonUrl = keys.filter((k) => k !== 'url').length;
+  return `final_state keys: ${keys.length === 0 ? 'none' : keys.join(', ')}; ${nonUrl} non-url key${nonUrl === 1 ? '' : 's'}`;
+}
+
+export function classify(i: ClassifyInput): Classification {
+```
+
+Replace:
+
+```ts
+    return out('SKIP', `Kane could not read the value${why ? `: ${why}` : ''}`, {
+```
+
+with:
+
+```ts
+    return out('SKIP', `Kane could not read the value (${keysNote(end.finalStateKeys)})${why ? `: ${why}` : ''}`, {
+```
+
+- [ ] **Step 14: `README.md` — one replacement (the "How it works" sentence about Kane's own key names; no heading changes)**
+
+Replace:
+
+```text
+Kane sometimes stores the value under a name of its own (the spike saw `total`): firstbad reads `observed` when it is there, otherwise the single stored key other than the page URL, and treats two or more candidate keys as no value rather than guess.
+```
+
+with:
+
+```text
+Kane sometimes stores the value under names of its own (the spike saw `total`; the first live demo run saw `cart_total` next to `discount_code`): firstbad reads `observed` when it is there, otherwise the single stored key other than the page URL, otherwise the one stored key whose name shares a word with your `--store` phrase (`cart_total` shares "total" with "the total amount shown next to the word Total"). No match, or more than one, counts as no value, and firstbad never picks a key by its value; when it reads no value, the report lists the key names Kane returned (names only, never values).
+```
+
+- [ ] **Step 15: Check that the README headings still match schema R3-cli-tool v1 (Task 14's check, unchanged)**
+Run (PowerShell): `$want = @('# firstbad','## Demo','## What it does','## Quickstart','## Built at KaneCLI Online Hackathon 2026','## Install','## Usage','## Commands / API reference','## How it works','## Roadmap','## License'); $stamp = '<!-- readme-schema: R3-cli-tool v1 -->'; $lines = Get-Content README.md -Encoding UTF8; $inFence = $false; $got = foreach ($l in $lines) { if ($l -match '^\x60{3}') { $inFence = -not $inFence } elseif (-not $inFence -and $l -cmatch '^#{1,2} ') { $l } }; $ok = ($got.Count -eq $want.Count); if ($ok) { for ($i = 0; $i -lt $want.Count; $i++) { if ($got[$i] -cne $want[$i]) { $ok = $false } } }; if ($ok -and ($lines[0] -ceq $stamp)) { 'PASS' } else { 'FAIL' }`
+Expected: prints `PASS`
+
+- [ ] **Step 16: Run the whole offline suite (this is the gate)**
+Run: `npx vitest run`
+Expected: PASS — output contains `Test Files  20 passed` (about 4 minutes; the global setup compiles `src/` with `tsc` first, so a type error fails it; no test calls the real kane-cli or claude)
+
+- [ ] **Step 17: Commit (kernel-performed — no agent runs this)**
+Message: `feat(kane): choose the final_state key whose name shares a word with the store phrase; record key names on empty values`
 
 ---
 

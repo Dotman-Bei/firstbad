@@ -158,16 +158,32 @@ Evaluated in order, per probe:
 6. A `run_end` is present: judge on the stored value (and, in `status+value` mode, on
    `run_end.status`), never on the exit code alone (exit 1 with `status: passed` is an upload
    failure, not a failed check). Let `observed` be the value `observedFrom()` (`src/kane/ndjson.ts`)
-   reads from `final_state`: `final_state.observed` if that key is present; otherwise, if exactly
-   one key other than `url` exists, that key's value; if two or more candidate keys exist, or none,
-   empty — firstbad never guesses between keys (string, trimmed; non-string → JSON string). A value
-   read from a key other than `observed` gets no shortcut: it is judged by exactly the rules below
-   (compared with `expected` and with the bad signature; in `status+value` mode a status/value
-   disagreement is still SKIP), and two or more candidate keys count as an empty value, retried once.
+   reads from `final_state` (string, trimmed; non-string → JSON string), in this order (decision 14):
+   1. `final_state.observed` if that key is present;
+   2. otherwise, if exactly one key other than `url` exists, that key's value (it needs no name
+      match: Task 3.1's rule, kept);
+   3. otherwise, of the two or more candidate keys (every key except `url`), the **one** whose name
+      shares a word with the check's `store` phrase. Words: a key name is split at camelCase
+      boundaries (`cartTotal` → `cart Total`, `HTMLTotal` → `HTML Total`), then on every run of
+      characters that are not letters or digits, and lowercased; the store phrase is split on every
+      run of non-letters/non-digits and lowercased; empty pieces are dropped; "shares a word" = the
+      two word sets intersect (whole words: `subtotal` does not match `total`; no stop-words are
+      removed). `cart_total` shares `total` with "the total amount shown next to the word Total",
+      `discount_code` shares nothing, so `cart_total` is chosen;
+   4. otherwise — no match, two or more matches, no candidate, or no store phrase passed (callers
+      such as the spike script that call `observedFrom(finalState)` with one argument keep rules 1–2
+      only) — empty, retried once like any empty value.
+
+   A key is never chosen by its value. A value read from a key other than `observed` gets no
+   shortcut: it is judged by exactly the rules below (compared with `expected` and with the bad
+   signature; in `status+value` mode a status/value disagreement is still SKIP), so a wrong key
+   cannot pass a commit.
    - `observed` empty → **retried once** like a transient (the retry counts against the run cap);
-     still empty → **SKIP** `Kane could not read the value` (flag `misphrased` when the `run_end`
-     blames the test: its raw JSON contains `automation_bug` or `config_issue`). In the bracket
-     phase this is the "mis-phrased" abort.
+     still empty → **SKIP** `Kane could not read the value (final_state keys: <names, or none>; <n>
+     non-url key(s))` followed by `: <Kane's summary>` when there is one, e.g. `Kane could not read
+     the value (final_state keys: url, cart_total, discount_code; 2 non-url keys): …` — key names
+     only, never values (flag `misphrased` when the `run_end` blames the test: its raw JSON contains
+     `automation_bug` or `config_issue`). In the bracket phase this is the "mis-phrased" abort.
    - `observed` matches `expected`: in `status+value` mode, status `passed` → **PASS**, otherwise
      **SKIP** `Kane and the stored value disagree`; in `value-only` mode → **PASS** whatever the
      status.
@@ -194,8 +210,14 @@ must classify **PASS** (else abort "the good ref does not pass the check: <reaso
   on Windows, `process.kill(-pid, 'SIGKILL')` elsewhere).
 - Parse stdout as NDJSON leniently: skip non-JSON lines, ignore unknown types/fields. First line not
   JSON → terminal mode → kill. Keep `stream_start`, `run_end` (whitelisted fields only; `final_state` is reduced to the one stored value by the
-  section-4 rule), the text of
+  section-4 rule, plus the key it was read from (`observedKey`) and the `final_state` key names
+  (`finalStateKeys`: names only, never values; at most 30, each scrubbed and cut to 64 chars)), the text of
   `type: error` events, and step counts. `credits_consumed` falls back to `credits`.
+- The section-4 key rule needs the check's store phrase: `probe()` passes `store: check.store` in
+  `RunKaneOptions`, `runKane()` hands it to `parseKaneStream(stdout, store?)`, which hands it to
+  `observedFrom(finalState, store?)`. All three parameters are optional, so a caller without a
+  store keeps the one-key rule. The store phrase is never sent to Kane as an argument of its own
+  (argv is unchanged).
 - stderr: keep a scrubbed tail (≤ 2000 chars) with every line containing `evidence` dropped.
 - `kane-cli balance` → first decimal number in stdout (commas removed) or `null`; `kane-cli
   --version` → first `x.y.z`; preflight requires ≥ 0.10.9.
@@ -273,9 +295,18 @@ interface LedgerEntry {
   verdict: 'PASS'|'FAIL'|'SKIP'|'ABORT'; reason: string; observed: string | null;
   kaneRuns: number; creditsConsumed: number | null; testUrl: string | null;
   resultCode: string | null; durationMs: number; at: string;
+  observedKey?: string;        // the final_state key the value was read from (value-bearing outcomes)
+  finalStateKeys?: string[];   // every final_state key NAME Kane returned, on an empty-value outcome
 }
 ```
 
+- **Key names, permanently (decision 14)**: every empty-value outcome records the `final_state`
+  key names (never their values) in `finalStateKeys` and, with the count of non-`url` keys, in
+  the reason (`Kane could not read the value (final_state keys: url, cart_total, discount_code;
+  2 non-url keys): …`), so the names reach `report.json`, the `report.md` timeline's Reason
+  column, the terminal timeline and the hunt's abort message. A value-bearing outcome records
+  `observedKey`. Both fields are optional, set only by `probe()`, and travel through the ledger,
+  the oracle relay and `buildReport()`'s `scrubDeep()` unchanged; `report.md` has no new column.
 - **Allow-list only**: nothing else from Kane is kept — never `session_dir`, evidence paths, raw
   events, headers, context, or Kane stderr. Every string goes through `scrub()`.
 - `scrub()` replaces with `[redacted]`: `Bearer <token>`, JWT-shaped strings
@@ -339,9 +370,14 @@ Terminal timeline line format (also used by the oracle relay):
   (transient exit 2), `auth` (exit 2 auth text), `timeout` (exit 3, no `run_end`), `hang` (never
   exits), `upload-failed` (exit 1, `run_end.status: passed`), `crash` (stack on stderr, exit 1, no
   stdout), `prose` (non-JSON first line, then hangs), `false-pass` (exit 0, passed, wrong value),
-  `token-leak` (failed, reason contains a bearer JWT).
+  `token-leak` (failed, reason contains a bearer JWT), `fetch` (stores the page text as
+  `observed`), `multikey` (the live shape of decision 14: fetches the page, status passed,
+  result_code 100, `final_state { url, cart_total: <page text>, discount_code: 'SAVE10' }`).
 - **Stub shop Kane** `test/fixtures/stub-kane-shop.mjs`: emulates Kane against the demo shop by
-  fetching `pricing.js` and `catalog.js` from the served URL and computing the real total.
+  fetching `pricing.js` and `catalog.js` from the served URL and computing the real total. With
+  `STUB_SHOP_FINAL_STATE=multikey` it returns `final_state { url, cart_total, discount_code }`
+  (what live Kane returned) instead of `{ observed }`; the demo end-to-end test runs that way, so
+  its full hunt and fix go through the store-phrase name match. `clearStubEnv()` clears the variable.
 - **Stub agent** `test/fixtures/stub-agent.mjs`: modes `write`, `noop`, `fail`,
   `restore-from-parent` (reads `First bad commit: <sha>` from the prompt and restores
   `STUB_AGENT_FILE` from `<sha>^`), optional `STUB_AGENT_NOOP_FIRST=1`.
@@ -520,6 +556,23 @@ SKIP, Kane runs ≤ 24, and no token/evidence pattern appears.
     `commas-assert` is chosen; unit tests cover the three parser cases → user, 2026-11-25, after
     re-run attempt 1 (`select-store-only`: passed, result_code 100, `final_state` keys
     `url, total`, observed empty; balance 11110.4166 → 11091.7249).
+14. Several non-url `final_state` keys → choose the key by name only: `observed` if present; else
+    the single non-url key (kept from decision 13, no name match needed); else the one key whose
+    name shares a word with the store phrase (tokenisation in section 4); none or several match →
+    empty value, retried once; never choose by value; the value is still compared with the
+    expected value and the bad ref's value, so a wrong key cannot pass a commit. Permanently
+    record, for every empty-value outcome, the `final_state` key names (names only) and the count
+    of non-url keys in the ledger and the report (section 8). Unit-test the rule (observed
+    present; one other key; several keys, one name match; several keys, no match; only url), keep
+    the offline gates green, then re-run the LIVE demo hunt (ship Task 15) once with
+    `FIRSTBAD_MAX_RUNS=24` and balance ≥ 500 → user, 2026-11-25 (pre-approved fix "3a" plus
+    permanent diagnostics), after ship Task 15's first LIVE run aborted at the bracket: the bad ref
+    stored `$20.00` (FAIL), but on the good ref `v1.0` Kane's summary said the total was `$18.00`
+    while firstbad read an empty value twice ("the good ref does not pass the check"). One
+    diagnostic LIVE run of the same store-only objective on `v1.0`: status passed, result_code 100,
+    `final_state` keys `url`, `cart_total` (`$18.00`), `discount_code` (a 6-character non-money
+    string), 2 non-url keys, so the decision-13 rule correctly refused to guess (balance
+    11002.9217 → 10983.139). Implemented by core Task 3.2.
 
 ## 16. Resolved by the spike (not guessed in the core plan)
 
@@ -529,7 +582,9 @@ SKIP, Kane runs ≤ 24, and no token/evidence pattern appears.
   `store-only` read the value, but Kane stored it under its own key (`total`), which the parser of
   the time missed. Attempt 2 (Task 2.1, after Task 3.1's parser and wording change) decides whether
   `store-only` (with `value-only`) returns the value on both pages, and records which key Kane used
-  on each.
+  on each. The first LIVE demo hunt (ship Task 15) then showed a third shape on the full demo check:
+  several keys (`url`, `cart_total`, `discount_code`) for one stored value, resolved by the
+  store-phrase name match of decision 14 (core Task 3.2) instead of a guess.
 - Whether a local `http://` run returns a well-formed `run_end` (blocking if not).
 - The exact `testmd` replay syntax and whether its output carries stored values (decides the
   replay stretch task). Day 1: `testmd run <recording> --agent --headless --timeout 300` passed on
