@@ -1,7 +1,7 @@
 {
   "name": "firstbad",
   "version": "0.1.0",
-  "description": "git bisect with a real-browser oracle: Kane CLI checks each commit against a plain-English test, names the first bad commit, and re-verifies your coding agent's fix until it passes.",
+  "description": "git bisect with Kane CLI's real browser as the judge: it names the first bad commit and proves your agent's fix.",
   "type": "module",
   "license": "MIT",
   "bin": {
