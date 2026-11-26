@@ -107,3 +107,9 @@ Win — top-3 finish (1st $1,500 + $250 OpenAI credits). The user framed it as "
 - Row 19: cleared (PASS). Stack rows S1-S11 are probed by the orchestrator at boot; a FAIL there comes back to the user with its fix hint.
 - Team created (solo), so this no longer blocks. Open item: re-check the real submit-form labels against the draft before Step 3.
 - Step 2.5 conditional rows (computer-use, YouTube login, ElevenLabs) undecided; Step 3 env store falls back to a git-ignored `.env`.
+
+## 2026-11-26 late morning: video final, Ctrl+C fix verified
+
+- Step 2.5 demo-studio DONE: final cut watched and approved (3:58, 1080p, -14.0 LUFS). Video source committed (6b94de3); renders are not in the repo. Video is on YouTube (public link in the README after the closing pass).
+- Ctrl+C bug FIXED in 8862e3a (all child process trees stopped, port freed, worktree and session removed, exit 130). Guide re-ran typecheck and the suite on the pulled head: 22 files, 93 tests pass. Verified by the build session on Windows with real console events (Ctrl+C and Ctrl+Break); macOS and Linux paths and other terminals untested.
+- Next: Step 3 closing pass (README video link, submission draft TBDs, form read-back, then Submit on the user's word), plus launch posts 2 and 3. Internal target: form filed by 15:00 UTC; hard deadline 18:29 UTC.
