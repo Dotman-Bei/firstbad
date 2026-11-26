@@ -3,10 +3,11 @@
 
 git bisect with a real-browser oracle: Kane CLI tests each commit, names the first bad one, and proves your agent's fix.
 
+**▶ Demo video (3:58): https://youtu.be/YJ_J-Str4K4**
+
 ## Demo
 
-- Demo video: TBD-post-build:demo-video-url
-- Terminal recording: TBD-post-build:terminal-gif
+- Demo video: [youtu.be/YJ_J-Str4K4](https://youtu.be/YJ_J-Str4K4): a short live start of `node dist/cli.js demo`, then a time-compressed replay of the recorded live run below (25 November 2026) with its real Kane share pages: the bracket, three skipped commits, the bisect, the confirmed culprit, and Claude Code's fix proven by Kane
 - Recorded live run (the fallback if you cannot run Kane yourself): [docs/demo/recorded-run/report.md](docs/demo/recorded-run/report.md) and the full terminal transcript in [docs/demo/recorded-run/transcript.txt](docs/demo/recorded-run/transcript.txt)
 
 ## What it does
