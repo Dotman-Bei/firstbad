@@ -33,7 +33,7 @@ Total 240 s. The four weights are equal; seconds lean to Verified, then Closed l
 
 | # | item | how to verify | ✓ |
 |---|---|---|---|
-| 1 | App running — Corner Shop generated with `generateDemoRepo()` from `dist/demo/generate.js` into a temp folder, served at HEAD `6f9b864` with `node server.js 4173`; for the S3 live clip, a built copy of the repo at the neutral path `C:demoirstbad` with `TEMP` set under `C:demo`, so no home path can print | `http://127.0.0.1:4173/` responds; generated HEAD SHA starts `6f9b864`; stub rehearsal shows no home path; `kane-cli balance` at least 500 before the live take; port 4173 free | |
+| 1 | App running — Corner Shop generated with `generateDemoRepo()` from `dist/demo/generate.js` into a temp folder, served at HEAD `6f9b864` with `node server.js 4173`; for the S3 live clip, a built copy of the repo at the neutral path `C:\demo\firstbad` with `TEMP` set under `C:\demo`, so no home path can print | `http://127.0.0.1:4173/` responds; generated HEAD SHA starts `6f9b864`; stub rehearsal shows no home path; `kane-cli balance` at least 500 before the live take; port 4173 free | |
 | 2 | Demo data — `docs/demo/recorded-run/` (report.md, report.json, transcript.txt); the agent's diff from fix commit `617eb8f` of that run (kept in its local demo repo, not in the committed run files; copied to `demo/data/`); share pages for timeline rows 1, 12, 13, 14 | `node scripts/check-recorded-run.mjs` prints PASS; each share page shows its total on the last step with no login | |
 | 3 | Wallet state — N/A: no wallet in this project | N/A | |
 | 4 | Browser hygiene — fresh Playwright context in installed Chrome (no profile, logged out), 1920×1080, 100% zoom, no address bar in the captured frame | page text contains no email address; header reads "Someone updated this test case" | |
@@ -47,7 +47,7 @@ Total 240 s. The four weights are equal; seconds lean to Verified, then Closed l
 |---|---|---|---|---|---|---|---|---|
 | S1 | 16 | Corner Shop at HEAD: add Tote bag, add Mug, type SAVE10, Apply; push in on "Code SAVE10 applied" and "Total: $20.00". On-screen label: "Demo shop, driven by a script for this video. Not a Kane run." | S1 "This is the…" | screencast | N/A | final frame shows both "Code SAVE10 applied" and "Total: $20.00" | 3 | |
 | S2 | 14 | Title card: "firstbad", "git bisect with a real-browser oracle", and the demo check as `--do` / `--store` / `--expect` | S2 "firstbad is a…" | N/A | N/A | all card text readable at 1080p | 3 | |
-| S3 | 37 | README Quickstart commands verbatim with the two steps highlighted: (1) `npm ci` and `npm run build`, (2) `node dist/cli.js demo`; then about 15 to 20 seconds of real, unedited terminal footage of `node dist/cli.js demo` run live: command typed, "generated the Corner Shop history", the printed check, the first Kane run starting, Ctrl+C, the cleanup message. Label on screen: "live, stopped early" | S3 "Setup is the…" | gfxcapture | N/A | commands match README.md; label visible for the whole live clip; typed command, generated line, check line, hunting line and cleanup message all present; no home path | 3 (a retake that would start another Kane run is asked first; if no clean take, fall back to the replay and say so) | |
+| S3 | 37 | README Quickstart commands verbatim with the two steps highlighted: (1) `npm ci` and `npm run build`, (2) `node dist/cli.js demo`; then about 15 to 20 seconds of real, unedited terminal footage of `node dist/cli.js demo` run live: command typed, "generated the Corner Shop history", the printed check, the "firstbad: hunting …" line, the first Kane run in progress. The clip ends there: no Ctrl+C and no cleanup message. Label on screen: "live, cut after the first Kane run starts" | S3 "Setup is the…" | gfxcapture | N/A | commands match README.md; label visible for the whole live clip; typed command, generated line, check line and hunting line present; a Kane run is in progress when the clip ends; no home path | 3 (a retake that would start another Kane run is asked first; if no clean take, fall back to the replay and say so) | |
 | S4 | 20 | Terminal replay: bracket lines (bad ref FAIL $20.00, good ref PASS $18.00). Persistent banner: "Replay of the recorded live run, 25 Nov 2026. Time compressed." | S4 "What follows is…" | N/A | N/A | lines match transcript.txt; banner visible | 3 | |
 | S5 | 22 | Kane Test Manager share page, run #1 (bad ref), logged out: Autoplay through the steps, end on "Reading the cart total amount", push in on "Total: $20.00". Label: "Real share page from the recorded run, opened logged out." | S5 "Every Kane run…" | screencast | N/A | "Total: $20.00" legible; no name or email on screen | 3 | |
 | S6 | 22 | Terminal replay: three SKIP lines (c0eaa8b, 0b42566, 4bb7b51); callout "Different failure: 0 Kane runs, 0 credits" | S6 "Now git bisect…" | N/A | N/A | three SKIP lines with "page never loaded (server exited with code 1)" | 3 | |
@@ -66,7 +66,7 @@ words: 39 · planned: 16s @ ~2.4 w/s · tone: calm, setting a puzzle · gloss: s
 **S2** — firstbad is a command-line tool that finds that commit. It is git bisect with a real browser as referee. You write one check in plain English, name a good release, and say how to serve your app.
 words: 37 · planned: 14s @ ~2.4 w/s · tone: plain, confident · gloss: firstbad → "first bad"; bisect → "by-sect"
 
-**S3** — Setup is the README quickstart: install Kane CLI, log in, clone and build. Then one command: demo. This is it running live. It generates a forty-commit shop history, the same commits on every machine, with one planted checkout bug and one unrelated broken stretch. It prints the check, then starts the first Kane run. A full run hunts the bug, asks Claude Code for a fix and proves it, so we stop this one early.
+**S3** — Setup is the README quickstart: install Kane CLI, log in, clone and build. Then one command: demo. This is it running live. It generates a forty-commit shop history, the same commits on every machine, with one planted checkout bug and one unrelated broken stretch. It prints the check, then starts the first Kane run. A full run hunts the bug, asks Claude Code for a fix and proves it, so we cut this one here.
 words: 75 · planned: 37s @ ~2.4 w/s · tone: practical · gloss: README → "read me"; CLI → "C L I"; Kane → "cane"
 
 **S4** — What follows is a replay of a recorded live run. First, firstbad proves the check can tell good from bad. Kane drives headless Chrome and reads the total. The latest commit shows twenty dollars: fail. Version one shows eighteen: pass. firstbad decides that from the value Kane stored.
@@ -100,7 +100,7 @@ words: 18 · planned: 9s @ ~2.4 w/s · tone: warm close · gloss: firstbad → "
 
 Order: S1 → S2 → … → S12 (S1 is the cold open; S2 is the title card; S12 is the outro). Transitions: hard cuts. Captions: on, word-timed, one line pair at the bottom on a solid band, never covering a total or a verdict. Captions use the written forms (firstbad, SAVE10, fc2879c, $20.00); the spoken forms in the §4 gloss are for synthesis only.
 Music: off. Loudness: −14 LUFS, two-pass. Export: 1080p h264. Mechanics: references/demo-stack.md.
-Honesty labels, always on screen where they apply: terminal scenes are a rendered replay of `transcript.txt` lines (not a screen recording); the S1 shop is script-driven (not a Kane run); share pages are the real pages from the recorded run; waits are cut and the true duration (22 minutes) is stated. The S3 clip is labelled "live, stopped early": it starts one real Kane run (about 20 credits, approved by the user) and is stopped with Ctrl+C. Everything after S3 is the labelled replay of the recorded run; no full live hunt is re-run.
+Honesty labels, always on screen where they apply: terminal scenes are a rendered replay of `transcript.txt` lines (not a screen recording); the S1 shop is script-driven (not a Kane run); share pages are the real pages from the recorded run; waits are cut and the true duration (22 minutes) is stated. The S3 clip is labelled "live, cut after the first Kane run starts": it starts one real Kane run (about 20 credits, approved by the user); the clip ends while that run is in progress and the processes are stopped off camera. Everything after S3 is the labelled replay of the recorded run; no full live hunt is re-run.
 
 ## 6 — QC record
 
@@ -135,7 +135,7 @@ firstbad finds the commit that broke a user flow and gets it fixed. You write on
 
 In the recorded run shown here: a 40-commit demo shop, three commits skipped because they failed for a different reason, first bad commit fc2879c confirmed against its parent, and Claude Code's one-line fix accepted only after a Kane run read the correct total. 11 Kane runs, 22 minutes, about 200 credits.
 
-What you are seeing: the setup scene includes a short live, unedited terminal clip of the demo command, stopped early with Ctrl+C. The later terminal scenes are a rendered, time-compressed replay of the committed transcript of the full live run. The Kane Test Manager pages are the real share pages from it, opened logged out. The opening shop scene is driven by a script for this video, not by Kane.
+What you are seeing: the setup scene includes a short live, unedited terminal clip of the demo command, cut after the first Kane run starts. The later terminal scenes are a rendered, time-compressed replay of the committed transcript of the full live run. The Kane Test Manager pages are the real share pages from it, opened logged out. The opening shop scene is driven by a script for this video, not by Kane.
 
 Code: https://github.com/Dotman-Bei/firstbad
 Recorded run (report and transcript): docs/demo/recorded-run/ in the repo
@@ -159,4 +159,6 @@ Narration is a synthetic voice (Kokoro). No music.
 |---|---|---|
 | 2026-11-26 | scripted | demo-studio (claude-sonnet-5-5) |
 | 2026-11-26 | superseded-edit (S3 gains a live, stopped-early terminal clip and is 37 s, total 240 s; visibility public; S11 credits shown as about 200 by balance) | demo-studio |
+| 2026-11-26 | approved | user |
+| 2026-11-26 | superseded-edit (S3 live clip ends once the first Kane run is in progress; no Ctrl+C or cleanup message; label and narration to match) | demo-studio |
 | 2026-11-26 | approved | user |
