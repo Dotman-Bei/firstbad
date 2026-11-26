@@ -24,7 +24,7 @@ Manifest (`docs/superpowers/manifest.json`): no `human_gate: true` tasks. Every 
 | Live field (label, limit) | Needed | Draft today | Mismatch / action |
 |---|---|---|---|
 | Project name (80) | * | "firstbad" | Pre-filled on the platform with the team name. Overwrite with `firstbad` |
-| One-liner (170) | * | 181 chars | **Over the limit by 11.** Use the README tagline (119 chars) |
+| One-liner (170) | * | 181 chars | **Over the limit by 11.** Use the README tagline (120 chars) |
 | Project details (1500) | * | section 02 is 1,990 chars | **Over the limit.** Split it: what/who/which agent/what Kane does go here, "Try it" and the numbers go below |
 | Anything else to add (4000) | optional | no such section | New: Try it, recorded-run numbers, category, tech stack |
 | Attachments (8 files, 25 MB each) | optional | none | Not planned |
@@ -45,8 +45,8 @@ account before gate (c).**
 |---|---|---|---|---|---|---|---|
 | 0 | Repo public flip | A | closing | `gh` (done earlier by the user's go) | none | none left | **done** 2026-11-26 (runsheet "Repo flipped PUBLIC"); re-verified 10:31 UTC logged out: repo page and raw README return 200 |
 | 0b | Demo video made and uploaded | n/a (demo-studio, Step 2.5) | 2.5 | n/a | n/a | n/a | **done**: final cut 3:58 approved (runsheet); public on YouTube, oEmbed returns 200 |
-| a | README video link near the top; remove the `Terminal recording` TBD line (no recording exists) | A | closing | Edit + `git commit <README.md>` + push with the gh credential helper | none | public text only; check Known limits against `8862e3a` | pending |
-| b | Resolve the draft's TBD-post-build lines; reshape the draft to the live form's fields and limits; check every claim against a repo file | A | closing | Edit + `git commit <docs/gates/submission-draft.md>` + push | none | post URLs, handles and email stay out of the repo | pending |
+| a | README video link near the top; remove the `Terminal recording` TBD line (no recording exists) | A | closing | Edit + `git commit <README.md>` + push with the gh credential helper | none | public text only; check Known limits against `8862e3a` | **done** 2026-11-26 (user go "run a and b"): video link under the tagline and in Demo, described as a live start plus a time-compressed replay (demo script §3); terminal-recording line removed; Known limits unchanged (the Ctrl+C fix in `8862e3a` is already described as fixed) |
+| b | Resolve the draft's TBD-post-build lines; reshape the draft to the live form's fields and limits; check every claim against a repo file | A | closing | Edit + `git commit <docs/gates/submission-draft.md>` + push | none | post URLs, handles and email stay out of the repo | **done** 2026-11-26 (user go "run a and b"): one block per live field, all under their limits (one-liner 120/170, details 1360/1500, anything else 2336/4000, agent 68/80); sources table added; launch-buzz links form-only |
 | L | Launch posts: at least 2 public posts (X thread, LinkedIn) | C (user-only: posting from the user's own accounts) | closing | none: the user posts, then pastes the links into this chat | user posts and pastes links | without 2 posts the form cannot be submitted | pending (user) |
 | c | Fill the submission form, unsubmitted, then read every field back | A | closing | claude-in-chrome `form_input` on `/o/submit`, values from the resolved draft, post links from chat | confirm the platform account first; "Save draft" only on the user's word | values are editable until Submit | pending, needs a/b, L, identity check |
 | d | Press Submit, then verify the confirmation screen | A (on the explicit word "submit") | closing | claude-in-chrome click `Submit`, then read the status | the user says "submit" | effectively one-way at the deadline | pending, needs c |
