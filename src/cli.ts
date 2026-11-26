@@ -6,7 +6,7 @@ import { parseArgs } from 'node:util';
 import { parseAgent } from './agent.js';
 import { validateCheck, type Check } from './check.js';
 import { cleanLeftovers } from './clean.js';
-import { runOracle } from './oracle.js';
+import { installOracleSignalHandlers, runOracle } from './oracle.js';
 import { DEMO_PORT, DemoDirError } from './demo/demo-config.js';
 import { runDemo } from './demo/run-demo.js';
 import { runFlow } from './run.js';
@@ -116,6 +116,7 @@ async function oracleCommand(args: string[], io: CliIO): Promise<number> {
     io.print('firstbad oracle: --session <file> is required');
     return 128;
   }
+  installOracleSignalHandlers();
   return runOracle(path.resolve(io.cwd, sessionPath), io.cwd, (l) => io.print(l));
 }
 

@@ -1,5 +1,7 @@
 #!/usr/bin/env node
-import { runOracle } from './oracle.js';
+import { installOracleSignalHandlers, runOracle } from './oracle.js';
+
+installOracleSignalHandlers();
 
 const at = process.argv.indexOf('--session');
 const sessionPath = at >= 0 ? process.argv[at + 1] : undefined;

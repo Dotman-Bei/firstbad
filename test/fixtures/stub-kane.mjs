@@ -113,7 +113,7 @@ async function main() {
   if (env.STUB_KANE_LOG) {
     fs.appendFileSync(
       env.STUB_KANE_LOG,
-      JSON.stringify({ argv: args, label, cwd: process.cwd(), userAgent: env.KANE_CLI_USER_AGENT ?? null }) + '\n',
+      JSON.stringify({ argv: args, label, cwd: process.cwd(), userAgent: env.KANE_CLI_USER_AGENT ?? null, pid: process.pid }) + '\n',
     );
   }
   const step = pickStep(label);

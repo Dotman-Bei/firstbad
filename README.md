@@ -115,7 +115,8 @@ Known limits:
 - Two bugs with different bad values in one range can make bisect skip the true culprit, because that commit shows a third value. The confirm step catches this and reports the hunt as unconfirmed.
 - A busy port aborts the hunt with a clear error instead of testing someone else's server.
 - One stored value per check, and Kane runs are serial: each one takes real minutes and credits.
-- Built and exercised on Windows 10. The macOS and Linux code paths (process-group kill, `sh` setup and serve commands) are implemented but were not run on those systems during the event.
+- Built and exercised on Windows 10. The macOS and Linux code paths (process-group kill, signal forwarding to the oracle, `sh` setup and serve commands) are implemented but were not run on those systems during the event.
+- Ctrl+C or Ctrl+Break during a hunt stops every process firstbad started (the app server, Kane, `git bisect run` and the oracle under it), then removes the worktree and session folder and exits 130; a second Ctrl+C exits at once. This was verified in a Windows 10 console window, not in Git Bash's mintty or Windows Terminal. If firstbad itself is killed without a signal (Task Manager, `taskkill /F`), nothing can run its cleanup: stop what still holds the port (`netstat -ano | findstr :<port>`, then `taskkill /pid <pid> /T /F`) and run `firstbad clean`. Whatever cleanup cannot remove, firstbad prints along with the command to remove it by hand.
 
 Next: a raw `--objective` escape hatch for checks that do not fit the store-and-compare shape, cheaper re-verification by replaying Kane's recorded test where replays prove faithful, and a GitHub Action that runs a hunt when a flow check starts failing.
 

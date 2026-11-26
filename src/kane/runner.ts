@@ -1,7 +1,7 @@
 import os from 'node:os';
 import spawn from 'cross-spawn';
 import { scrub } from '../scrub.js';
-import { execArgv, killTree } from '../util/proc.js';
+import { assertSpawnAllowed, execArgv, killTree, track } from '../util/proc.js';
 import { parseKaneStream, type KaneStream } from './ndjson.js';
 
 export interface RunKaneOptions {
@@ -70,13 +70,16 @@ export function runKane(o: RunKaneOptions): Promise<KaneRunResult> {
     let terminalMode = false;
     let firstLineChecked = false;
     let settled = false;
-    const child = spawn(command, [...prefix, ...kaneArgs(o)], {
-      cwd: o.cwd,
-      env: kaneEnv(o.env ?? process.env, o.label),
-      stdio: ['ignore', 'pipe', 'pipe'],
-      windowsHide: true,
-      detached: process.platform !== 'win32',
-    });
+    assertSpawnAllowed();
+    const child = track(
+      spawn(command, [...prefix, ...kaneArgs(o)], {
+        cwd: o.cwd,
+        env: kaneEnv(o.env ?? process.env, o.label),
+        stdio: ['ignore', 'pipe', 'pipe'],
+        windowsHide: true,
+        detached: process.platform !== 'win32',
+      }),
+    );
     const timer = setTimeout(() => {
       killed = true;
       killTree(child.pid);

@@ -1,9 +1,22 @@
 import { revParse, subjectOf } from './git.js';
 import { probe } from './probe.js';
 import { appendLedger, readSession, type LedgerEntry } from './session.js';
+import { killTrackedNow } from './util/proc.js';
 import { exitCodeFor } from './verdict.js';
 
 export const ORACLE_MARK = '@@firstbad ';
+
+// The oracle owns the app server and Kane while git bisect run calls it. On a signal it stops them
+// before exiting 128 (abort), so they do not outlive it. On Windows firstbad's taskkill /T reaches
+// them anyway; on POSIX (untested) they sit in their own process groups and this is what stops them.
+export function installOracleSignalHandlers(): void {
+  for (const s of ['SIGINT', 'SIGTERM', 'SIGBREAK', 'SIGHUP'] as const) {
+    process.on(s, () => {
+      killTrackedNow();
+      process.exit(128);
+    });
+  }
+}
 
 function crashEntry(reason: string): LedgerEntry {
   return {

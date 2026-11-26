@@ -10,6 +10,7 @@ import { kaneBalance, kaneVersion, versionAtLeast } from './kane/runner.js';
 import { ORACLE_MARK } from './oracle.js';
 import { probe } from './probe.js';
 import { readLedger, readLimits, readSession, stamp, writeSession, type HuntLog, type LedgerEntry, type Session } from './session.js';
+import { allowDuringCleanup, assertSpawnAllowed, track } from './util/proc.js';
 
 export const MIN_KANE_VERSION = '0.10.9';
 
@@ -146,7 +147,16 @@ interface BisectRun {
 
 function runBisect(cwd: string, oracleArgv: string[], log: HuntLog): Promise<BisectRun> {
   return new Promise((resolve) => {
-    const child = nodeSpawn('git', ['bisect', 'run', ...oracleArgv], { cwd, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
+    assertSpawnAllowed();
+    // detached on POSIX: its own process group, so stopTracked() can signal git, sh and the oracle together.
+    const child = track(
+      nodeSpawn('git', ['bisect', 'run', ...oracleArgv], {
+        cwd,
+        stdio: ['ignore', 'pipe', 'pipe'],
+        windowsHide: true,
+        detached: process.platform !== 'win32',
+      }),
+    );
     let output = '';
     let pending = '';
     const aborts: LedgerEntry[] = [];
@@ -271,14 +281,53 @@ export async function hunt(p: Prepared, log: HuntLog, oracleCmd: string[] = defa
   );
 }
 
-export async function cleanupSession(sessionPath: string, keep = false): Promise<void> {
+const BUSY = new Set(['EBUSY', 'EPERM', 'ENOTEMPTY', 'EACCES']);
+
+// Removes a folder, retrying while Windows still reports it busy (a just-killed process can hold
+// handles for a moment). Returns true when the folder is gone.
+export async function removeDirWithRetry(dir: string, timeoutMs = 5000): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    try {
+      fs.rmSync(dir, { recursive: true, force: true });
+      return !fs.existsSync(dir);
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code ?? '';
+      if (!BUSY.has(code) || Date.now() >= deadline) return !fs.existsSync(dir);
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+  }
+}
+
+export interface CleanupReport {
+  // Folders that still exist after cleanup (the worktree, or the session folder unless kept).
+  leftovers: string[];
+}
+
+// `known` lets an interrupt clean up even when session.json cannot be read (a killed oracle may
+// have been mid-write).
+export async function cleanupSession(sessionPath: string, keep = false, known?: Session): Promise<CleanupReport> {
   let s: Session;
   try {
     s = readSession(sessionPath);
   } catch {
-    return;
+    if (known === undefined) return { leftovers: [] };
+    s = known;
   }
-  if (fs.existsSync(s.worktreeDir)) await git(s.worktreeDir, ['bisect', 'reset']);
-  await removeWorktree(s.repoDir, s.worktreeDir);
-  if (!keep) fs.rmSync(s.sessionDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+  return allowDuringCleanup(async () => {
+    if (fs.existsSync(s.worktreeDir)) await git(s.worktreeDir, ['bisect', 'reset']);
+    await removeWorktree(s.repoDir, s.worktreeDir);
+    if (fs.existsSync(s.worktreeDir)) {
+      await removeDirWithRetry(s.worktreeDir);
+      await git(s.repoDir, ['worktree', 'prune']);
+    }
+    // The worktree lives inside the session folder, so a removed session folder covers both.
+    const leftovers: string[] = [];
+    if (keep) {
+      if (fs.existsSync(s.worktreeDir)) leftovers.push(s.worktreeDir);
+    } else if (!(await removeDirWithRetry(s.sessionDir))) {
+      leftovers.push(s.sessionDir);
+    }
+    return { leftovers };
+  });
 }

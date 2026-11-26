@@ -1,5 +1,107 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { spawn as nodeSpawn, spawnSync, type ChildProcess } from 'node:child_process';
 import spawn from 'cross-spawn';
+
+// Every child firstbad starts is tracked here, so an interrupt can stop the whole tree before the
+// worktree and session folder are removed (a child still running in the worktree holds it busy on
+// Windows, and a server child holds the check's port).
+const live = new Set<ChildProcess>();
+let closed = false;
+const cleanupScope = new AsyncLocalStorage<boolean>();
+
+export class ShutdownError extends Error {
+  constructor() {
+    super('firstbad is shutting down; not starting another process');
+    this.name = 'ShutdownError';
+  }
+}
+
+// Throws once stopTracked() has closed spawning, except inside allowDuringCleanup().
+export function assertSpawnAllowed(): void {
+  if (closed && cleanupScope.getStore() !== true) throw new ShutdownError();
+}
+
+export function allowDuringCleanup<T>(fn: () => Promise<T>): Promise<T> {
+  return cleanupScope.run(true, fn);
+}
+
+export function reopenSpawns(): void {
+  closed = false;
+}
+
+export function track<T extends ChildProcess>(child: T): T {
+  if (child.pid === undefined || child.exitCode !== null || child.signalCode !== null) return child;
+  live.add(child);
+  const drop = (): void => {
+    live.delete(child);
+  };
+  child.once('exit', drop);
+  child.once('error', drop);
+  return child;
+}
+
+function running(c: ChildProcess): boolean {
+  return c.exitCode === null && c.signalCode === null;
+}
+
+function waitExit(children: ChildProcess[], timeoutMs: number): Promise<void> {
+  const pending = children.filter(running);
+  if (pending.length === 0) return Promise.resolve();
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, timeoutMs);
+    let left = pending.length;
+    for (const c of pending) {
+      c.once('exit', () => {
+        left -= 1;
+        if (left === 0) {
+          clearTimeout(timer);
+          resolve();
+        }
+      });
+    }
+  });
+}
+
+function signalGroup(pid: number | undefined, signal: NodeJS.Signals): void {
+  if (pid === undefined) return;
+  try {
+    process.kill(-pid, signal);
+  } catch {
+    try {
+      process.kill(pid, signal);
+    } catch {
+      // already gone
+    }
+  }
+}
+
+// Stops every tracked child and everything it started; returns the pids still running afterwards.
+// close=true also refuses new spawns (outside allowDuringCleanup) so an unwinding flow cannot start
+// the next server after the interrupt.
+// win32: taskkill /T /F per child (walks the parent-pid tree, so it reaches grandchildren under
+// git bisect run). POSIX (untested): SIGTERM to each process group so the oracle can stop its own
+// detached children, then SIGKILL to the group.
+export async function stopTracked(opts: { close: boolean; graceMs?: number }): Promise<number[]> {
+  if (opts.close) closed = true;
+  const grace = opts.graceMs ?? 2000;
+  const kids = [...live];
+  if (kids.length === 0) return [];
+  if (process.platform === 'win32') {
+    for (const c of kids) if (running(c)) killTree(c.pid);
+  } else {
+    for (const c of kids) signalGroup(c.pid, 'SIGTERM');
+    await waitExit(kids, grace);
+    for (const c of kids) signalGroup(c.pid, 'SIGKILL');
+  }
+  await waitExit(kids, grace);
+  return kids.filter(running).map((c) => c.pid ?? -1);
+}
+
+// Synchronous variant for a second interrupt or an exiting oracle: no waiting, no grace period.
+export function killTrackedNow(): void {
+  closed = true;
+  for (const c of [...live]) if (running(c)) killTree(c.pid);
+}
 
 export interface ExecOptions {
   cwd: string;
@@ -105,6 +207,11 @@ function collect(child: ChildProcess, opts: ExecOptions, started: number): Promi
 export function execArgv(argv: string[], opts: ExecOptions): Promise<ExecResult> {
   const [command, ...args] = argv;
   if (command === undefined) return Promise.reject(new Error('execArgv: empty argv'));
+  try {
+    assertSpawnAllowed();
+  } catch (err) {
+    return Promise.reject(err);
+  }
   const started = Date.now();
   const child = spawn(command, args, {
     cwd: opts.cwd,
@@ -113,10 +220,15 @@ export function execArgv(argv: string[], opts: ExecOptions): Promise<ExecResult>
     windowsHide: true,
     detached: process.platform !== 'win32',
   });
-  return collect(child, opts, started);
+  return collect(track(child), opts, started);
 }
 
 export function execShell(command: string, opts: ExecOptions): Promise<ExecResult> {
+  try {
+    assertSpawnAllowed();
+  } catch (err) {
+    return Promise.reject(err);
+  }
   const started = Date.now();
   const child = nodeSpawn(command, {
     cwd: opts.cwd,
@@ -126,16 +238,19 @@ export function execShell(command: string, opts: ExecOptions): Promise<ExecResul
     windowsHide: true,
     detached: process.platform !== 'win32',
   });
-  return collect(child, opts, started);
+  return collect(track(child), opts, started);
 }
 
 export function spawnShell(command: string, opts: { cwd: string; env?: NodeJS.ProcessEnv }): ChildProcess {
-  return nodeSpawn(command, {
-    cwd: opts.cwd,
-    env: opts.env ?? process.env,
-    shell: true,
-    stdio: ['ignore', 'pipe', 'pipe'],
-    windowsHide: true,
-    detached: process.platform !== 'win32',
-  });
+  assertSpawnAllowed();
+  return track(
+    nodeSpawn(command, {
+      cwd: opts.cwd,
+      env: opts.env ?? process.env,
+      shell: true,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      windowsHide: true,
+      detached: process.platform !== 'win32',
+    }),
+  );
 }
