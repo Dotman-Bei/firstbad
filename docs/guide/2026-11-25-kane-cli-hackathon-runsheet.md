@@ -95,6 +95,9 @@ Win — top-3 finish (1st $1,500 + $250 OpenAI credits). The user framed it as "
 - Plan (3 posts): (1) X kickoff now, no links (repo still private, video not ready); (2) X launch thread with the public YouTube video and the repo link, after the repo flip; (3) LinkedIn launch post with the native video. HN/Reddit only if the user already has aged accounts (new ones get filtered).
 - Post URLs go into docs/gates/submission-draft.md (launch-post-1/2) and the submit form. Status: post 1 drafted (<=280 chars), not yet posted.
 
+## Repo flipped PUBLIC (user-approved, 2026-11-26)
+- After the home-path scrub (1026401). Verified logged out: repo page, raw README, recorded report all 200; anonymous `git ls-remote` works; a Kane share link returns 200. The username remains only in older commits (accepted). Post 1 (X, long form) approved to go out; its repo link now resolves.
+
 ## Next action
 1. Throwaway tab (Sonnet, low): copy the kit's `references/agents/executor-{low,medium,high,xhigh,max}.md` into `.claude/agents/`, commit, push (only those five files).
 2. Then a fresh orchestrator tab (Opus, high) with the Step 2 kickoff (REPO Dotman-Bei/firstbad, review mode autonomous, routing auto).
