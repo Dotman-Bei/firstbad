@@ -1,6 +1,6 @@
 # Runsheet — KaneCLI Online Hackathon (TestMu AI)
 
-Kit (doctrine, read-only): `C:\Users\bamig\Documents\VIBE CODE\Hackathons\build-system`
+Kit (doctrine, read-only): `~\Documents\VIBE CODE\Hackathons\build-system`
 Guide seat: `claude-sonnet-5-5`, tier standard, effort high (session-stated), opened 2026-11-25 11:22 WAT.
 
 ## Event
@@ -19,7 +19,7 @@ Guide seat: `claude-sonnet-5-5`, tier standard, effort high (session-stated), op
 
 ## Project repo
 - **Current: `Dotman-Bei/firstbad`** — **private**, remote `https://github.com/Dotman-Bei/firstbad.git`. Created by the guide on 2026-11-25 as `Dotman-Bei/kane-cli-hackathon-2026` (event-named, repo-bootstrap.md); renamed to `firstbad` by idea-forge Step 0 on 2026-11-25 (guide-verified via `gh repo view`: name, PRIVATE, description = the one-line solution; local origin updated). Use `Dotman-Bei/firstbad` in every kickoff's REPO field.
-- Local clone (folder keeps the OLD name): `C:\Users\bamig\Documents\VIBE CODE\Hackathons\kane-cli-hackathon-2026` (sibling of the kit; path has a space, so every spawned command and path must be quoted). Origin verified = firstbad.git.
+- Local clone (folder keeps the OLD name): `~\Documents\VIBE CODE\Hackathons\kane-cli-hackathon-2026` (sibling of the kit; path has a space, so every spawned command and path must be quoted). Origin verified = firstbad.git.
 - Public flip is a consent-gated Step-3 action and is REQUIRED for submission.
 
 ## Tollgate
