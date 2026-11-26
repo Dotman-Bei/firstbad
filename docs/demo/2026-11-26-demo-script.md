@@ -182,3 +182,4 @@ Narration is a synthetic voice (Kokoro). No music.
 | 2026-11-26 | recorded (12/12 scenes) | demo-studio |
 | 2026-11-26 | assembled | demo-studio |
 | 2026-11-26 | QC passed [residuals: S3 28 s vs 37 s planned; small step list during Kane Autoplay; QR not machine-scanned; audio not checked by ear] | demo-studio |
+| 2026-11-26 | watched | user |
