@@ -113,3 +113,10 @@ Win — top-3 finish (1st $1,500 + $250 OpenAI credits). The user framed it as "
 - Step 2.5 demo-studio DONE: final cut watched and approved (3:58, 1080p, -14.0 LUFS). Video source committed (6b94de3); renders are not in the repo. Video is on YouTube (public link in the README after the closing pass).
 - Ctrl+C bug FIXED in 8862e3a (all child process trees stopped, port freed, worktree and session removed, exit 130). Guide re-ran typecheck and the suite on the pulled head: 22 files, 93 tests pass. Verified by the build session on Windows with real console events (Ctrl+C and Ctrl+Break); macOS and Linux paths and other terminals untested.
 - Next: Step 3 closing pass (README video link, submission draft TBDs, form read-back, then Submit on the user's word), plus launch posts 2 and 3. Internal target: form filed by 15:00 UTC; hard deadline 18:29 UTC.
+
+## 2026-11-26 SUBMITTED
+
+- Step 3 closing pass DONE: README reworked (1282ea6, 1a735bb), repo description and package.json corrected (d527085), submission draft fixed (b6f85cb), gate d recorded in eda192f.
+- Form submitted at 12:09 UTC (5:39 PM IST), about 6 h 20 min before the 18:29 UTC deadline. Page reads "Submitted. You can still edit until the deadline." Showcase page /o/p/heisbei loads logged out and names firstbad.
+- Three public X posts attached to the form (links are in private memory, not here).
+- Open and optional: demo/data/repo-qr.svg and demo/package-lock.json untracked (video rebuild only). YouTube description deliberately left empty by the user. No pushes after 18:29 UTC.
