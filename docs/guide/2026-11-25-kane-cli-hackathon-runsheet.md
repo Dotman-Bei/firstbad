@@ -89,6 +89,12 @@ Win — top-3 finish (1st $1,500 + $250 OpenAI credits). The user framed it as "
 - **Order of work:** core:1 → core:2 (spike, background) while core:3+ and demo:10-12 build; ship:15 only after every must-have and core:9 (unless cut); ship:16 stretch only after ship:15 is green.
 - **Cut order if behind:** ship:16, then core:9, then the Step 2.5 video polish (keep a plain screen recording + narration).
 
+## Launch posts (guide read https://www.kaneclihack.sh/o/launch, 2026-11-26)
+- Rules: 2 public posts REQUIRED to submit; more posts (and their reach) earn brownie points. No dates on the page. Post links are pasted at /o/submit.
+- X: hashtags #KaneCLIHackathon #KaneCLI (two at most, in the last post), tag @kane_cli and @testmuai, never start a post with an @mention. Launch thread 4-6 posts under 280 chars each, links only in the first and last, video on post 1, GitHub link in the last. LinkedIn: 1,100-1,600 chars, hashtags #KaneCLIHackathon #KaneCLI #AIAgents at the end, TestMu AI tag must be picked from the @ dropdown, upload the video natively. HN: title "Show HN: ...", own words from own account, no pasted text (flagged), no hashtags. Reddit: r/SideProject, r/webdev or r/programming, read rules, no hashtags.
+- Plan (3 posts): (1) X kickoff now, no links (repo still private, video not ready); (2) X launch thread with the public YouTube video and the repo link, after the repo flip; (3) LinkedIn launch post with the native video. HN/Reddit only if the user already has aged accounts (new ones get filtered).
+- Post URLs go into docs/gates/submission-draft.md (launch-post-1/2) and the submit form. Status: post 1 drafted (<=280 chars), not yet posted.
+
 ## Next action
 1. Throwaway tab (Sonnet, low): copy the kit's `references/agents/executor-{low,medium,high,xhigh,max}.md` into `.claude/agents/`, commit, push (only those five files).
 2. Then a fresh orchestrator tab (Opus, high) with the Step 2 kickoff (REPO Dotman-Bei/firstbad, review mode autonomous, routing auto).
