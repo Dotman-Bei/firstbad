@@ -1,0 +1,28 @@
+diff --git a/pricing.js b/pricing.js
+index 0375688..d707393 100644
+--- a/pricing.js
++++ b/pricing.js
+@@ -2,14 +2,21 @@
+ // totalCents() applies at most one discount code; codes are case-insensitive.
+ export const CODES = { SAVE10: 10 };
+ 
++export function normalizeCode(code) {
++  return String(code ?? '').trim().toLowerCase();
++}
++
++export function discountPercent(code) {
++  return CODES[normalizeCode(code)] ?? 0;
++}
++
+ export function subtotalCents(lines) {
+   return lines.reduce((sum, line) => sum + line.price * line.qty, 0);
+ }
+ 
+ export function totalCents(lines, code) {
+   const subtotal = subtotalCents(lines);
+-  const percent = CODES[String(code ?? '').trim().toUpperCase()] ?? 0;
+-  return Math.round((subtotal * (100 - percent)) / 100);
++  return Math.round((subtotal * (100 - discountPercent(code))) / 100);
+ }
+ 
+ export function formatCents(cents) {

@@ -1,0 +1,13 @@
+diff --git a/pricing.js b/pricing.js
+index d707393..c03c1b4 100644
+--- a/pricing.js
++++ b/pricing.js
+@@ -3,7 +3,7 @@
+ export const CODES = { SAVE10: 10 };
+ 
+ export function normalizeCode(code) {
+-  return String(code ?? '').trim().toLowerCase();
++  return String(code ?? '').trim().toUpperCase();
+ }
+ 
+ export function discountPercent(code) {
