@@ -33,30 +33,30 @@ Total 240 s. The four weights are equal; seconds lean to Verified, then Closed l
 
 | # | item | how to verify | ✓ |
 |---|---|---|---|
-| 1 | App running — Corner Shop generated with `generateDemoRepo()` from `dist/demo/generate.js` into a temp folder, served at HEAD `6f9b864` with `node server.js 4173`; for the S3 live clip, a built copy of the repo at the neutral path `C:\demo\firstbad` with `TEMP` set under `C:\demo`, so no home path can print | `http://127.0.0.1:4173/` responds; generated HEAD SHA starts `6f9b864`; stub rehearsal shows no home path; `kane-cli balance` at least 500 before the live take; port 4173 free | |
-| 2 | Demo data — `docs/demo/recorded-run/` (report.md, report.json, transcript.txt); the agent's diff from fix commit `617eb8f` of that run (kept in its local demo repo, not in the committed run files; copied to `demo/data/`); share pages for timeline rows 1, 12, 13, 14 | `node scripts/check-recorded-run.mjs` prints PASS; each share page shows its total on the last step with no login | |
-| 3 | Wallet state — N/A: no wallet in this project | N/A | |
-| 4 | Browser hygiene — fresh Playwright context in installed Chrome (no profile, logged out), 1920×1080, 100% zoom, no address bar in the captured frame | page text contains no email address; header reads "Someone updated this test case" | |
-| 5 | Desktop hygiene — S3 live clip only: the user clears the screen and silences notifications; only the recording terminal window is captured (found at runtime, never the whole desktop). Everything else is headless capture or Remotion renders. No token, `.evidence` folder, home path, email or access key in any frame | user confirms before the take; frame check at QC (§6, hard fail) | |
-| 6 | Capture toolchain — tollgate card green; versions: Remotion 4.0.543, playwright-core 1.65.1, mediabunny 1.64.0, Kokoro 0.9.4 (already installed locally and proven on this machine; the kit's July pins are past their 60-day freshness window) | `docs/tollgate/2026-11-25-tollgate.md` §6 | |
-| 7 | Assets — title card text (S2), outro URL `https://github.com/Dotman-Bei/firstbad` and QR (generated locally), no logo, no music | rendered in the storyboard stills | |
+| 1 | App running — Corner Shop generated with `generateDemoRepo()` from `dist/demo/generate.js` into a temp folder, served at HEAD `6f9b864` with `node server.js 4173`; for the S3 live clip, a built copy of the repo at the neutral path `C:\demo\firstbad` with `TEMP` set under `C:\demo`, so no home path can print | `http://127.0.0.1:4173/` responds; generated HEAD SHA starts `6f9b864`; stub rehearsal shows no home path; `kane-cli balance` at least 500 before the live take; port 4173 free | ✓ |
+| 2 | Demo data — `docs/demo/recorded-run/` (report.md, report.json, transcript.txt); the agent's diff from fix commit `617eb8f` of that run (kept in its local demo repo, not in the committed run files; copied to `demo/data/`); share pages for timeline rows 1, 12, 13, 14 | `node scripts/check-recorded-run.mjs` prints PASS; each share page shows its total on the last step with no login | ✓ |
+| 3 | Wallet state — N/A: no wallet in this project | N/A | N/A |
+| 4 | Browser hygiene — fresh Playwright context in installed Chrome (no profile, logged out), 1920×1080, 100% zoom, no address bar in the captured frame | page text contains no email address; header reads "Someone updated this test case" | ✓ |
+| 5 | Desktop hygiene — S3 live clip only: the user clears the screen and silences notifications; only the recording terminal window is captured (found at runtime, never the whole desktop). Everything else is headless capture or Remotion renders. No token, `.evidence` folder, home path, email or access key in any frame | user confirms before the take; frame check at QC (§6, hard fail) | ✓ |
+| 6 | Capture toolchain — tollgate card green; versions: Remotion 4.0.543, playwright-core 1.65.1, mediabunny 1.64.0, Kokoro 0.9.4 (already installed locally and proven on this machine; the kit's July pins are past their 60-day freshness window) | `docs/tollgate/2026-11-25-tollgate.md` §6 | ✓ |
+| 7 | Assets — title card text (S2), outro URL `https://github.com/Dotman-Bei/firstbad` and QR (generated locally), no logo, no music | rendered in the storyboard stills | ✓ |
 
 ## 3 — Shot list
 
 | id | seconds | visual (route/action/window) | narration cue | driver | wallet verbs | gate assertion | retakes | take |
 |---|---|---|---|---|---|---|---|---|
-| S1 | 16 | Corner Shop at HEAD: add Tote bag, add Mug, type SAVE10, Apply; push in on "Code SAVE10 applied" and "Total: $20.00". On-screen label: "Demo shop, driven by a script for this video. Not a Kane run." | S1 "This is the…" | screencast | N/A | final frame shows both "Code SAVE10 applied" and "Total: $20.00" | 3 | |
-| S2 | 14 | Title card: "firstbad", "git bisect with a real-browser oracle", and the demo check as `--do` / `--store` / `--expect` | S2 "firstbad is a…" | N/A | N/A | all card text readable at 1080p | 3 | |
-| S3 | 37 | README Quickstart commands verbatim with the two steps highlighted: (1) `npm ci` and `npm run build`, (2) `node dist/cli.js demo`; then about 15 to 20 seconds of real, unedited terminal footage of `node dist/cli.js demo` run live: command typed, "generated the Corner Shop history", the printed check, the "firstbad: hunting …" line, the first Kane run in progress. The clip ends there: no Ctrl+C and no cleanup message. Label on screen: "live, cut after the first Kane run starts" | S3 "Setup is the…" | gfxcapture | N/A | commands match README.md; label visible for the whole live clip; typed command, generated line, check line and hunting line present; a Kane run is in progress when the clip ends; no home path | 3 (a retake that would start another Kane run is asked first; if no clean take, fall back to the replay and say so) | |
-| S4 | 20 | Terminal replay: bracket lines (bad ref FAIL $20.00, good ref PASS $18.00). Persistent banner: "Replay of the recorded live run, 25 Nov 2026. Time compressed." | S4 "What follows is…" | N/A | N/A | lines match transcript.txt; banner visible | 3 | |
-| S5 | 22 | Kane Test Manager share page, run #1 (bad ref), logged out: Autoplay through the steps, end on "Reading the cart total amount", push in on "Total: $20.00". Label: "Real share page from the recorded run, opened logged out." | S5 "Every Kane run…" | screencast | N/A | "Total: $20.00" legible; no name or email on screen | 3 | |
-| S6 | 22 | Terminal replay: three SKIP lines (c0eaa8b, 0b42566, 4bb7b51); callout "Different failure: 0 Kane runs, 0 credits" | S6 "Now git bisect…" | N/A | N/A | three SKIP lines with "page never loaded (server exited with code 1)" | 3 | |
-| S7 | 18 | Terminal replay: six bisect verdicts beside a commit strip narrowing to one; label "Each Kane run took about 1.5 to 2.5 minutes. Waits cut." | S7 "From here, every…" | N/A | N/A | PASS, PASS, FAIL, PASS, FAIL, FAIL in transcript order | 3 | |
-| S8 | 22 | "First bad commit: fc2879c refactor(cart): extract price helpers"; confirm lines; side by side from the real share pages: culprit run #12 "Total: $20.00", parent run #13 "Total: $18.00" | S8 "And there it…" | screencast | N/A | commit line plus both totals legible in one frame | 3 | |
-| S9 | 24 | The culprit's diff (`.toLowerCase()`), the brief sections firstbad sends (check, what Kane saw, first bad commit, diff), the replay line "handing Kane's failure to the agent (claude)", then Claude's one-line diff to `.toUpperCase()` | S9 "Now the agent…" | N/A | N/A | both diffs legible; no author or email lines | 3 | |
-| S10 | 24 | Kane share page, run #14 (fix), logged out: Autoplay, end on "Total: $18.00"; then replay lines "fix attempt 1 PASS $18.00" and "fix verified on branch firstbad/fix-fc2879c (commit 617eb8f)" | S10 "Kane runs the…" | screencast | N/A | "Total: $18.00" legible; fix-verified line on screen | 3 | |
-| S11 | 12 | The committed report: timeline table with links, and "11 Kane runs · 22 minutes · about 200 credits by balance" | S11 "The whole hunt…" | N/A | N/A | figures match report.md and the transcript header | 3 | |
-| S12 | 9 | Outro: repo URL and QR, "Built at KaneCLI Online Hackathon 2026", "Recorded run: docs/demo/recorded-run/" | S12 "firstbad. git bisect…" | N/A | N/A | URL and QR readable | 3 | |
+| S1 | 16 | Corner Shop at HEAD: add Tote bag, add Mug, type SAVE10, Apply; push in on "Code SAVE10 applied" and "Total: $20.00". On-screen label: "Demo shop, driven by a script for this video. Not a Kane run." | S1 "This is the…" | screencast | N/A | final frame shows both "Code SAVE10 applied" and "Total: $20.00" | 3 | 2 |
+| S2 | 14 | Title card: "firstbad", "git bisect with a real-browser oracle", and the demo check as `--do` / `--store` / `--expect` | S2 "firstbad is a…" | N/A | N/A | all card text readable at 1080p | 3 | 1 |
+| S3 | 37 | README Quickstart commands verbatim with the two steps highlighted: (1) `npm ci` and `npm run build`, (2) `node dist/cli.js demo`; then about 15 to 20 seconds of real, unedited terminal footage of `node dist/cli.js demo` run live: command typed, "generated the Corner Shop history", the printed check, the "firstbad: hunting …" line, the first Kane run in progress. The clip ends there: no Ctrl+C and no cleanup message. Label on screen: "live, cut after the first Kane run starts" | S3 "Setup is the…" | gfxcapture | N/A | commands match README.md; label visible for the whole live clip; typed command, generated line, check line and hunting line present; a Kane run is in progress when the clip ends; no home path | 3 (a retake that would start another Kane run is asked first; if no clean take, fall back to the replay and say so) | 1 |
+| S4 | 20 | Terminal replay: bracket lines (bad ref FAIL $20.00, good ref PASS $18.00). Persistent banner: "Replay of the recorded live run, 25 Nov 2026. Time compressed." | S4 "What follows is…" | N/A | N/A | lines match transcript.txt; banner visible | 3 | 1 |
+| S5 | 22 | Kane Test Manager share page, run #1 (bad ref), logged out: Autoplay through the steps, end on "Reading the cart total amount", push in on "Total: $20.00". Label: "Real share page from the recorded run, opened logged out." | S5 "Every Kane run…" | screencast | N/A | "Total: $20.00" legible; no name or email on screen | 3 | 2 |
+| S6 | 22 | Terminal replay: three SKIP lines (c0eaa8b, 0b42566, 4bb7b51); callout "Different failure: 0 Kane runs, 0 credits" | S6 "Now git bisect…" | N/A | N/A | three SKIP lines with "page never loaded (server exited with code 1)" | 3 | 1 |
+| S7 | 18 | Terminal replay: six bisect verdicts beside a commit strip narrowing to one; label "Each Kane run took about 1.5 to 2.5 minutes. Waits cut." | S7 "From here, every…" | N/A | N/A | PASS, PASS, FAIL, PASS, FAIL, FAIL in transcript order | 3 | 1 |
+| S8 | 22 | "First bad commit: fc2879c refactor(cart): extract price helpers"; confirm lines; side by side from the real share pages: culprit run #12 "Total: $20.00", parent run #13 "Total: $18.00" | S8 "And there it…" | screencast | N/A | commit line plus both totals legible in one frame | 3 | 1 |
+| S9 | 24 | The culprit's diff (`.toLowerCase()`), the brief sections firstbad sends (check, what Kane saw, first bad commit, diff), the replay line "handing Kane's failure to the agent (claude)", then Claude's one-line diff to `.toUpperCase()` | S9 "Now the agent…" | N/A | N/A | both diffs legible; no author or email lines | 3 | 1 |
+| S10 | 24 | Kane share page, run #14 (fix), logged out: Autoplay, end on "Total: $18.00"; then replay lines "fix attempt 1 PASS $18.00" and "fix verified on branch firstbad/fix-fc2879c (commit 617eb8f)" | S10 "Kane runs the…" | screencast | N/A | "Total: $18.00" legible; fix-verified line on screen | 3 | 2 |
+| S11 | 12 | The committed report: timeline table with links, and "11 Kane runs · 22 minutes · about 200 credits by balance" | S11 "The whole hunt…" | N/A | N/A | figures match report.md and the transcript header | 3 | 1 |
+| S12 | 9 | Outro: repo URL and QR, "Built at KaneCLI Online Hackathon 2026", "Recorded run: docs/demo/recorded-run/" | S12 "firstbad. git bisect…" | N/A | N/A | URL and QR readable | 3 | 1 |
 
 ## 4 — Narration script
 
@@ -106,14 +106,16 @@ Honesty labels, always on screen where they apply: terminal scenes are a rendere
 
 | check | scene(s) | pass/fail | note |
 |---|---|---|---|
-| money shot visible | | | |
-| text legible at 1080p | | | |
-| captions present + synced | | | |
-| no capture yellow border | | | |
-| no secret / no address that shouldn't be on screen | | | |
-| per-scene duration within budget | | | |
-| total duration within ±10% | | | |
-| audio present, loudness sane | | | |
+| money shot visible | S8, S10 | fail | cut 1: S8 showed two empty boxes for about 9 s before the confirm pages |
+| captions present + synced | S5 | fail | cut 1: the push-in hid the green steps while they were being narrated |
+| money shot visible | S8, S10 | pass | cut 2: fc2879c on screen from 2:25, culprit $20.00 and parent $18.00 by 2:37, fixed total $18.00 pushed in at 3:22 |
+| text legible at 1080p | all | pass | residual: the Kane page's step list is small while Autoplay runs (S5, S10); each total is pushed in |
+| captions present + synced | all | pass | word-timed; checked on sampled frames, not watched end to end |
+| no capture yellow border | S3 | pass | window capture shows no border or title bar |
+| no secret / no address that shouldn't be on screen | all | pass | no home path, email, name, token or evidence folder on sampled frames; the live path is C:\demo\firstbad; share pages read "Someone"; credit balances are visible |
+| per-scene duration within budget | S3 | fail | accepted residual: 28 s against 37 s planned (-24%), because the 20 s live clip plays under the narration; the other 11 scenes are within ±20% |
+| total duration within ±10% | all | pass | 238.6 s against 240 s |
+| audio present, loudness sane | all | pass | -14.0 LUFS integrated, peak -1.9 dBFS, no silence over 5 s; not checked by ear (one mispronunciation, "README", was found from phonemes and fixed) |
 
 ## 7 — Publish block
 
@@ -128,7 +130,7 @@ Honesty labels, always on screen where they apply: terminal scenes are a rendere
 | Verified logged-out | TBD |
 | Resolves | submission-draft demo video URL |
 
-Description text (chapter times are added after the render):
+Description text:
 
 ```text
 firstbad finds the commit that broke a user flow and gets it fixed. You write one check in plain English; git bisect runs it, with Kane CLI driving a real headless Chrome at every step.
@@ -149,6 +151,20 @@ npm ci
 npm run build
 node dist/cli.js demo
 
+Chapters:
+0:00 The bug
+0:16 What firstbad is
+0:30 Setup and a live start
+0:58 Can the check tell good from bad?
+1:20 A real Kane run, logged out
+1:42 Three commits skipped
+2:03 Bisect narrows
+2:23 First bad commit, confirmed
+2:47 Claude's one-line fix
+3:12 Kane proves the fix
+3:36 Report and cost
+3:48 Try it
+
 Built at the KaneCLI Online Hackathon 2026 (TestMu AI), category 02 Workflow.
 Narration is a synthetic voice (Kokoro). No music.
 ```
@@ -162,3 +178,7 @@ Narration is a synthetic voice (Kokoro). No music.
 | 2026-11-26 | approved | user |
 | 2026-11-26 | superseded-edit (S3 live clip ends once the first Kane run is in progress; no Ctrl+C or cleanup message; label and narration to match) | demo-studio |
 | 2026-11-26 | approved | user |
+| 2026-11-26 | pre-flight verified | demo-studio |
+| 2026-11-26 | recorded (12/12 scenes) | demo-studio |
+| 2026-11-26 | assembled | demo-studio |
+| 2026-11-26 | QC passed [residuals: S3 28 s vs 37 s planned; small step list during Kane Autoplay; QR not machine-scanned; audio not checked by ear] | demo-studio |
